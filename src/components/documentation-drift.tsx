@@ -4,51 +4,34 @@ import { BookOpen, ArrowRight, FileWarning } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SectionHeader } from '@/components/section-header';
-import { cn } from '@/lib/utils';
+import {
+  DashboardEmptyState,
+  type DashboardSectionStateProps,
+} from '@/components/dashboard-section-state';
+import type { MaintainerBriefing } from '@/types/maintainer-briefing';
 
-interface DocSuggestion {
-  id: string;
-  name: string;
-  reason: string;
-  severity: 'high' | 'medium' | 'low';
+interface DocumentationDriftProps extends DashboardSectionStateProps {
+  documentation?: MaintainerBriefing['documentation'];
 }
 
-const suggestions: DocSuggestion[] = [
-  {
-    id: '1',
-    name: 'README.md',
-    reason: 'Quick start guide references deprecated API endpoints. Updated 6 weeks ago.',
-    severity: 'high',
-  },
-  {
-    id: '2',
-    name: 'Installation Guide',
-    reason: 'Node.js version requirement changed. Currently lists v18, should be v20+.',
-    severity: 'high',
-  },
-  {
-    id: '3',
-    name: 'API Reference',
-    reason: 'New streaming endpoint added but not documented. Review recent PRs.',
-    severity: 'medium',
-  },
-  {
-    id: '4',
-    name: 'Contributing Guide',
-    reason: 'Coding standards reference outdated TypeScript version.',
-    severity: 'low',
-  },
-];
+function DocumentationDriftSkeleton() {
+  return (
+    <div className="space-y-2.5">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Skeleton key={index} className="h-16 rounded-xl" />
+      ))}
+    </div>
+  );
+}
 
-const severityConfig = {
-  high: { variant: 'destructive' as const, accent: 'border-l-destructive/60' },
-  medium: { variant: 'secondary' as const, accent: 'border-l-chart-3/60' },
-  low: { variant: 'outline' as const, accent: 'border-l-muted-foreground/30' },
-};
-
-export default function DocumentationDrift() {
-  const highCount = suggestions.filter((s) => s.severity === 'high').length;
+export default function DocumentationDrift({
+  documentation,
+  isLoading,
+  isEmpty,
+}: DocumentationDriftProps) {
+  const suggestions = documentation?.suggestions ?? [];
 
   return (
     <Card className="glass-panel glass-panel-hover border-0">
@@ -58,10 +41,10 @@ export default function DocumentationDrift() {
           title="Documentation Drift"
           description="Documentation likely needs updating"
           action={
-            highCount > 0 ? (
+            documentation?.outdated ? (
               <Badge variant="destructive" className="gap-1">
                 <FileWarning className="size-3" />
-                {highCount} critical
+                {suggestions.length} suggestion{suggestions.length === 1 ? '' : 's'}
               </Badge>
             ) : undefined
           }
@@ -69,31 +52,26 @@ export default function DocumentationDrift() {
       </CardHeader>
 
       <CardContent>
-        <div className="space-y-2.5">
-          {suggestions.map((doc, index) => {
-            const config = severityConfig[doc.severity];
-
-            return (
+        {isLoading ? (
+          <DocumentationDriftSkeleton />
+        ) : isEmpty || !documentation ? (
+          <DashboardEmptyState />
+        ) : suggestions.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No documentation updates suggested.
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            {suggestions.map((suggestion, index) => (
               <div
-                key={doc.id}
-                className={cn(
-                  'group list-item-interactive border-l-2',
-                  config.accent,
-                  'animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards'
-                )}
-                style={{ animationDelay: `${index * 75}ms` }}
+                key={`${suggestion}-${index}`}
+                className="group list-item-interactive border-l-2 border-l-chart-3/60"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
-                        {doc.name}
-                      </h3>
-                      <Badge variant={config.variant} className="capitalize">
-                        {doc.severity}
-                      </Badge>
-                    </div>
-                    <p className="text-xs leading-relaxed text-muted-foreground">{doc.reason}</p>
+                    <p className="text-sm font-medium leading-relaxed text-foreground transition-colors group-hover:text-primary">
+                      {suggestion}
+                    </p>
                   </div>
                   <Button
                     variant="ghost"
@@ -104,9 +82,9 @@ export default function DocumentationDrift() {
                   </Button>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

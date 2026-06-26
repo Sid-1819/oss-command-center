@@ -1,3 +1,4 @@
+import { trimAnalysisForBriefingPrompt } from "@/lib/repository-analysis-utils";
 import type { RepositoryAnalysis } from "@/types/repository-analysis";
 
 export const MAINTAINER_BRIEFING_SYSTEM_INSTRUCTION = `You are an experienced open-source maintainer.
@@ -39,7 +40,7 @@ export function buildMaintainerBriefingPrompt(
     "- Avoid generic advice; every recommendation must be actionable.",
     "",
     "Repository data:",
-    JSON.stringify(analysis, null, 2),
+    JSON.stringify(trimAnalysisForBriefingPrompt(analysis)),
   ];
 
   if (correction) {

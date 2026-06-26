@@ -1,7 +1,9 @@
 "use server";
 
 import {
+  getOpenIssueCount,
   getOpenIssues,
+  getOpenPullRequestCount,
   getOpenPullRequests,
   getRepository,
 } from "@/lib/github";
@@ -70,6 +72,8 @@ function normalizeRepositoryAnalysis(
   repository: GitHubRepository,
   pullRequests: GitHubPullRequest[],
   issues: GitHubIssue[],
+  openIssueCount: number,
+  openPullRequestCount: number,
 ): RepositoryAnalysis {
   return {
     repository: {
@@ -77,8 +81,10 @@ function normalizeRepositoryAnalysis(
       name: repository.name,
       stars: repository.stargazers_count,
       forks: repository.forks_count,
-      openIssues: issues.length,
-      openPullRequests: pullRequests.length,
+      openIssues: openIssueCount,
+      openPullRequests: openPullRequestCount,
+      sampledIssues: issues.length,
+      sampledPullRequests: pullRequests.length,
       defaultBranch: repository.default_branch,
       description: repository.description,
     },
@@ -116,13 +122,22 @@ export async function analyzeRepository(
   }
 
   try {
-    const [repository, pullRequests, issues] = await Promise.all([
-      getRepository(normalizedOwner, normalizedRepo),
-      getOpenPullRequests(normalizedOwner, normalizedRepo),
-      getOpenIssues(normalizedOwner, normalizedRepo),
-    ]);
+    const [repository, pullRequests, issues, openIssueCount, openPullRequestCount] =
+      await Promise.all([
+        getRepository(normalizedOwner, normalizedRepo),
+        getOpenPullRequests(normalizedOwner, normalizedRepo),
+        getOpenIssues(normalizedOwner, normalizedRepo),
+        getOpenIssueCount(normalizedOwner, normalizedRepo),
+        getOpenPullRequestCount(normalizedOwner, normalizedRepo),
+      ]);
 
-    return normalizeRepositoryAnalysis(repository, pullRequests, issues);
+    return normalizeRepositoryAnalysis(
+      repository,
+      pullRequests,
+      issues,
+      openIssueCount,
+      openPullRequestCount,
+    );
   } catch (error) {
     throw toAnalyzeRepositoryError(error, normalizedOwner, normalizedRepo);
   }

@@ -6,6 +6,8 @@ export interface RepositoryAnalysis {
     forks: number;
     openIssues: number;
     openPullRequests: number;
+    sampledIssues: number;
+    sampledPullRequests: number;
     defaultBranch: string;
     description: string | null;
   };
