@@ -1,6 +1,9 @@
 'use client';
 
-import { BookOpen, ArrowRight, AlertTriangle } from 'lucide-react';
+import { BookOpen, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface DocSuggestion {
   id: string;
@@ -36,62 +39,60 @@ const suggestions: DocSuggestion[] = [
   },
 ];
 
-function getSeverityColor(severity: string) {
+function getSeverityVariant(severity: string) {
   switch (severity) {
     case 'high':
-      return 'border-red-500/30 bg-red-500/5';
+      return 'destructive';
     case 'medium':
-      return 'border-yellow-500/30 bg-yellow-500/5';
+      return 'secondary';
     case 'low':
-      return 'border-blue-500/30 bg-blue-500/5';
+      return 'outline';
     default:
-      return 'border-card-border';
-  }
-}
-
-function getSeverityBadge(severity: string) {
-  const baseClass = 'px-2 py-1 rounded text-xs font-semibold uppercase';
-  switch (severity) {
-    case 'high':
-      return `${baseClass} bg-red-500/20 text-red-300`;
-    case 'medium':
-      return `${baseClass} bg-yellow-500/20 text-yellow-300`;
-    case 'low':
-      return `${baseClass} bg-blue-500/20 text-blue-300`;
-    default:
-      return `${baseClass} bg-card-border text-text-muted`;
+      return 'outline';
   }
 }
 
 export default function DocumentationDrift() {
   return (
-    <div className="bg-card-bg border border-card-border rounded-2xl p-8">
-      <div className="flex items-center gap-2 mb-2">
-        <BookOpen className="w-5 h-5 text-text-muted" />
-        <h2 className="text-xl font-bold">Documentation Drift</h2>
-      </div>
-      <p className="text-sm text-text-muted mb-6">Documentation likely needs updating</p>
-
-      <div className="space-y-3">
-        {suggestions.map((doc) => (
-          <div key={doc.id} className={`border rounded-lg p-4 group cursor-pointer transition-all hover:border-accent-primary/50 ${getSeverityColor(doc.severity)}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-semibold text-sm text-foreground group-hover:text-accent-primary transition-colors">
-                    {doc.name}
-                  </h3>
-                  <div className={getSeverityBadge(doc.severity)}>{doc.severity}</div>
-                </div>
-                <p className="text-xs text-text-muted leading-relaxed">{doc.reason}</p>
-              </div>
-              <button className="flex-shrink-0 p-2 hover:bg-accent-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                <ArrowRight className="w-4 h-4 text-accent-primary" />
-              </button>
-            </div>
+    <Card className="border-border">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <BookOpen className="size-5" />
+          <div>
+            <CardTitle>Documentation Drift</CardTitle>
+            <CardDescription>Documentation likely needs updating</CardDescription>
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        <div className="space-y-3">
+          {suggestions.map((doc) => (
+            <div key={doc.id} className="border border-border rounded-lg p-4 group cursor-pointer transition-all hover:border-primary/50">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
+                      {doc.name}
+                    </h3>
+                    <Badge variant={getSeverityVariant(doc.severity)}>
+                      {doc.severity}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{doc.reason}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-shrink-0 opacity-0 group-hover:opacity-100"
+                >
+                  <ArrowRight className="size-4" data-icon="inline-end" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

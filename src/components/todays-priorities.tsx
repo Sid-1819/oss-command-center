@@ -1,6 +1,10 @@
 'use client';
 
-import { AlertCircle, AlertOctagon, AlertCircle as AlertLow, ArrowRight } from 'lucide-react';
+import { AlertCircle, AlertOctagon, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface PriorityItem {
   id: string;
@@ -36,80 +40,72 @@ const priorities: PriorityItem[] = [
   },
 ];
 
-function getPriorityColor(priority: string) {
+function getPriorityVariant(priority: string) {
   switch (priority) {
     case 'high':
-      return 'border-red-500/30 bg-red-500/5';
+      return 'destructive';
     case 'medium':
-      return 'border-yellow-500/30 bg-yellow-500/5';
+      return 'secondary';
     case 'low':
-      return 'border-blue-500/30 bg-blue-500/5';
+      return 'outline';
     default:
-      return 'border-card-border bg-background/40';
+      return 'outline';
   }
 }
 
 function getPriorityIcon(priority: string) {
   switch (priority) {
     case 'high':
-      return <AlertOctagon className="w-5 h-5 text-red-400" />;
+      return <AlertOctagon className="size-5" />;
     case 'medium':
-      return <AlertCircle className="w-5 h-5 text-yellow-400" />;
-    case 'low':
-      return <AlertLow className="w-5 h-5 text-blue-400" />;
+      return <AlertCircle className="size-5" />;
     default:
-      return null;
-  }
-}
-
-function getPriorityBadge(priority: string) {
-  const baseClass = 'px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide';
-  switch (priority) {
-    case 'high':
-      return `${baseClass} bg-red-500/20 text-red-300`;
-    case 'medium':
-      return `${baseClass} bg-yellow-500/20 text-yellow-300`;
-    case 'low':
-      return `${baseClass} bg-blue-500/20 text-blue-300`;
-    default:
-      return `${baseClass} bg-card-border text-text-muted`;
+      return <AlertCircle className="size-5" />;
   }
 }
 
 export default function TodaysPriorities() {
   return (
-    <div className="bg-card-bg border border-card-border rounded-2xl p-8">
-      <h2 className="text-xl font-bold mb-2">Today&apos;s Priorities</h2>
-      <p className="text-sm text-text-muted mb-6">Ranked by impact and urgency</p>
+    <Card className="border-border">
+      <CardHeader>
+        <CardTitle>Today&apos;s Priorities</CardTitle>
+        <CardDescription>Ranked by impact and urgency</CardDescription>
+      </CardHeader>
 
-      <div className="space-y-4">
-        {priorities.map((item) => (
-          <div
-            key={item.id}
-            className={`border rounded-lg p-4 transition-all hover:border-accent-primary/50 group cursor-pointer ${getPriorityColor(
-              item.priority,
-            )}`}
-          >
-            <div className="flex items-start gap-4">
-              <div className="mt-0.5">{getPriorityIcon(item.priority)}</div>
+      <CardContent>
+        <div className="space-y-4">
+          {priorities.map((item) => (
+            <div
+              key={item.id}
+              className="border border-border rounded-lg p-4 transition-all hover:border-primary/50 group cursor-pointer"
+            >
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5">{getPriorityIcon(item.priority)}</div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-4 mb-2">
-                  <h3 className="font-semibold text-foreground text-sm group-hover:text-accent-primary transition-colors">
-                    {item.title}
-                  </h3>
-                  <div className={getPriorityBadge(item.priority)}>{item.priority}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-4 mb-2">
+                    <h3 className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">
+                      {item.title}
+                    </h3>
+                    <Badge variant={getPriorityVariant(item.priority)}>
+                      {item.priority}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{item.reason}</p>
                 </div>
-                <p className="text-xs text-text-muted leading-relaxed">{item.reason}</p>
-              </div>
 
-              <button className="flex-shrink-0 ml-2 p-2 hover:bg-accent-primary/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                <ArrowRight className="w-4 h-4 text-accent-primary" />
-              </button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100"
+                >
+                  <ArrowRight className="size-4" data-icon="inline-end" />
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
