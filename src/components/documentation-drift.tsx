@@ -1,9 +1,11 @@
 'use client';
 
-import { BookOpen, ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BookOpen, ArrowRight, FileWarning } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SectionHeader } from '@/components/section-header';
+import { cn } from '@/lib/utils';
 
 interface DocSuggestion {
   id: string;
@@ -39,58 +41,71 @@ const suggestions: DocSuggestion[] = [
   },
 ];
 
-function getSeverityVariant(severity: string) {
-  switch (severity) {
-    case 'high':
-      return 'destructive';
-    case 'medium':
-      return 'secondary';
-    case 'low':
-      return 'outline';
-    default:
-      return 'outline';
-  }
-}
+const severityConfig = {
+  high: { variant: 'destructive' as const, accent: 'border-l-destructive/60' },
+  medium: { variant: 'secondary' as const, accent: 'border-l-chart-3/60' },
+  low: { variant: 'outline' as const, accent: 'border-l-muted-foreground/30' },
+};
 
 export default function DocumentationDrift() {
+  const highCount = suggestions.filter((s) => s.severity === 'high').length;
+
   return (
-    <Card className="border-border">
+    <Card className="glass-panel glass-panel-hover border-0">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <BookOpen className="size-5" />
-          <div>
-            <CardTitle>Documentation Drift</CardTitle>
-            <CardDescription>Documentation likely needs updating</CardDescription>
-          </div>
-        </div>
+        <SectionHeader
+          icon={<BookOpen className="size-4" />}
+          title="Documentation Drift"
+          description="Documentation likely needs updating"
+          action={
+            highCount > 0 ? (
+              <Badge variant="destructive" className="gap-1">
+                <FileWarning className="size-3" />
+                {highCount} critical
+              </Badge>
+            ) : undefined
+          }
+        />
       </CardHeader>
 
       <CardContent>
-        <div className="space-y-3">
-          {suggestions.map((doc) => (
-            <div key={doc.id} className="border border-border rounded-lg p-4 group cursor-pointer transition-all hover:border-primary/50">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                      {doc.name}
-                    </h3>
-                    <Badge variant={getSeverityVariant(doc.severity)}>
-                      {doc.severity}
-                    </Badge>
+        <div className="space-y-2.5">
+          {suggestions.map((doc, index) => {
+            const config = severityConfig[doc.severity];
+
+            return (
+              <div
+                key={doc.id}
+                className={cn(
+                  'group list-item-interactive border-l-2',
+                  config.accent,
+                  'animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards'
+                )}
+                style={{ animationDelay: `${index * 75}ms` }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                      <h3 className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+                        {doc.name}
+                      </h3>
+                      <Badge variant={config.variant} className="capitalize">
+                        {doc.severity}
+                      </Badge>
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{doc.reason}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{doc.reason}</p>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <ArrowRight className="size-4" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex-shrink-0 opacity-0 group-hover:opacity-100"
-                >
-                  <ArrowRight className="size-4" data-icon="inline-end" />
-                </Button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>

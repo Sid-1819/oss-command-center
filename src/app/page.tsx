@@ -1,17 +1,5 @@
 'use client';
 
-import {
-  ArrowRight,
-  AlertCircle,
-  CheckCircle2,
-  GitBranch,
-  BookOpen,
-  Code2,
-  TrendingUp,
-  Zap,
-  FileText,
-  Clock,
-} from 'lucide-react';
 import Header from '@/components/header';
 import MaintainerBriefing from '@/components/maintainer-briefing';
 import TodaysPriorities from '@/components/todays-priorities';
@@ -22,31 +10,26 @@ import RepositoryHealth from '@/components/repository-health';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans">
+    <div className="min-h-screen text-foreground">
       <Header />
 
-      <main className="w-full max-w-7xl mx-auto px-6 py-12">
-        {/* Hero Section */}
-        <div className="mb-12">
+      <main className="mx-auto w-full max-w-7xl px-6 py-10">
+        <section className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <MaintainerBriefing />
-        </div>
+        </section>
 
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
+        <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="space-y-5 lg:col-span-2">
             <TodaysPriorities />
             <ReleaseAssistant />
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-6">
+          <div className="space-y-5">
             <RepositoryHealth />
           </div>
         </div>
 
-        {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <DocumentationDrift />
           <ContributorOpportunities />
         </div>

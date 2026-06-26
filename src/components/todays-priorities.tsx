@@ -1,9 +1,10 @@
 'use client';
 
-import { AlertCircle, AlertOctagon, ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertCircle, AlertOctagon, ArrowRight, ListTodo } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SectionHeader } from '@/components/section-header';
 import { cn } from '@/lib/utils';
 
 interface PriorityItem {
@@ -40,70 +41,88 @@ const priorities: PriorityItem[] = [
   },
 ];
 
-function getPriorityVariant(priority: string) {
-  switch (priority) {
-    case 'high':
-      return 'destructive';
-    case 'medium':
-      return 'secondary';
-    case 'low':
-      return 'outline';
-    default:
-      return 'outline';
-  }
-}
-
-function getPriorityIcon(priority: string) {
-  switch (priority) {
-    case 'high':
-      return <AlertOctagon className="size-5" />;
-    case 'medium':
-      return <AlertCircle className="size-5" />;
-    default:
-      return <AlertCircle className="size-5" />;
-  }
-}
+const priorityConfig = {
+  high: {
+    variant: 'destructive' as const,
+    icon: AlertOctagon,
+    accent: 'border-l-destructive/60',
+    dot: 'bg-destructive',
+  },
+  medium: {
+    variant: 'secondary' as const,
+    icon: AlertCircle,
+    accent: 'border-l-chart-3/60',
+    dot: 'bg-chart-3',
+  },
+  low: {
+    variant: 'outline' as const,
+    icon: AlertCircle,
+    accent: 'border-l-muted-foreground/40',
+    dot: 'bg-muted-foreground',
+  },
+};
 
 export default function TodaysPriorities() {
   return (
-    <Card className="border-border">
+    <Card className="glass-panel glass-panel-hover border-0">
       <CardHeader>
-        <CardTitle>Today&apos;s Priorities</CardTitle>
-        <CardDescription>Ranked by impact and urgency</CardDescription>
+        <SectionHeader
+          icon={<ListTodo className="size-4" />}
+          title="Today's Priorities"
+          description="Ranked by impact and urgency"
+          action={
+            <Badge variant="outline" className="border-white/[0.08] bg-secondary/50 tabular-nums">
+              {priorities.length} items
+            </Badge>
+          }
+        />
       </CardHeader>
 
       <CardContent>
-        <div className="space-y-4">
-          {priorities.map((item) => (
-            <div
-              key={item.id}
-              className="border border-border rounded-lg p-4 transition-all hover:border-primary/50 group cursor-pointer"
-            >
-              <div className="flex items-start gap-4">
-                <div className="mt-0.5">{getPriorityIcon(item.priority)}</div>
+        <div className="space-y-2.5">
+          {priorities.map((item, index) => {
+            const config = priorityConfig[item.priority];
+            const Icon = config.icon;
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <h3 className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">
-                      {item.title}
-                    </h3>
-                    <Badge variant={getPriorityVariant(item.priority)}>
-                      {item.priority}
-                    </Badge>
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'group list-item-interactive border-l-2',
+                  config.accent,
+                  'animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards'
+                )}
+                style={{ animationDelay: `${index * 75}ms` }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-white/[0.06]">
+                    <Icon className="size-4 text-muted-foreground" />
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{item.reason}</p>
-                </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100"
-                >
-                  <ArrowRight className="size-4" data-icon="inline-end" />
-                </Button>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex items-start justify-between gap-3">
+                      <h3 className="text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
+                        {item.title}
+                      </h3>
+                      <Badge variant={config.variant} className="shrink-0 capitalize">
+                        <span className={cn('mr-1 size-1.5 rounded-full', config.dot)} />
+                        {item.priority}
+                      </Badge>
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{item.reason}</p>
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>

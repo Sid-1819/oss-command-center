@@ -1,9 +1,11 @@
 'use client';
 
-import { Code2, ArrowRight, Zap } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Code2, ArrowRight, Zap, Users } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SectionHeader } from '@/components/section-header';
+import { cn } from '@/lib/utils';
 
 interface Opportunity {
   id: string;
@@ -44,76 +46,71 @@ const opportunities: Opportunity[] = [
   },
 ];
 
-function getEffortVariant(effort: string) {
-  switch (effort) {
-    case 'small':
-      return 'default';
-    case 'medium':
-      return 'secondary';
-    case 'large':
-      return 'destructive';
-    default:
-      return 'outline';
-  }
-}
-
-function getEffortLabel(effort: string) {
-  switch (effort) {
-    case 'small':
-      return 'Small effort';
-    case 'medium':
-      return 'Medium effort';
-    case 'large':
-      return 'Large effort';
-    default:
-      return 'Unknown';
-  }
-}
+const effortConfig = {
+  small: { variant: 'default' as const, label: 'Small effort', color: 'text-primary' },
+  medium: { variant: 'secondary' as const, label: 'Medium effort', color: 'text-chart-3' },
+  large: { variant: 'destructive' as const, label: 'Large effort', color: 'text-destructive' },
+};
 
 export default function ContributorOpportunities() {
   return (
-    <Card className="border-border">
+    <Card className="glass-panel glass-panel-hover border-0">
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Code2 className="size-5" />
-          <div>
-            <CardTitle>Contributor Opportunities</CardTitle>
-            <CardDescription>Beginner-friendly issues to invite contributors</CardDescription>
-          </div>
-        </div>
+        <SectionHeader
+          icon={<Users className="size-4" />}
+          title="Contributor Opportunities"
+          description="Beginner-friendly issues to invite contributors"
+          action={
+            <Badge variant="outline" className="gap-1 border-white/[0.08] bg-secondary/50">
+              <Code2 className="size-3" />
+              {opportunities.length} open
+            </Badge>
+          }
+        />
       </CardHeader>
 
       <CardContent>
-        <div className="space-y-3">
-          {opportunities.map((opp) => (
-            <div
-              key={opp.id}
-              className="border border-border rounded-lg p-4 group cursor-pointer hover:border-primary/50 transition-all bg-secondary"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs font-mono text-muted-foreground">#{opp.issueNumber}</span>
-                    <h3 className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">
-                      {opp.title}
-                    </h3>
+        <div className="space-y-2.5">
+          {opportunities.map((opp, index) => {
+            const config = effortConfig[opp.effort];
+
+            return (
+              <div
+                key={opp.id}
+                className={cn(
+                  'group list-item-interactive animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards'
+                )}
+                style={{ animationDelay: `${index * 75}ms` }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground ring-1 ring-white/[0.06]">
+                        #{opp.issueNumber}
+                      </span>
+                      <h3 className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+                        {opp.title}
+                      </h3>
+                    </div>
+                    <p className="mb-2.5 text-xs leading-relaxed text-muted-foreground">
+                      {opp.reason}
+                    </p>
+                    <Badge variant={config.variant}>
+                      <Zap className={cn('size-3', config.color)} data-icon="inline-start" />
+                      {config.label}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-3">{opp.reason}</p>
-                  <Badge variant={getEffortVariant(opp.effort)}>
-                    <Zap className="size-3 mr-1" data-icon="inline-start" />
-                    {getEffortLabel(opp.effort)}
-                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <ArrowRight className="size-4" />
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex-shrink-0 opacity-0 group-hover:opacity-100"
-                >
-                  <ArrowRight className="size-4" data-icon="inline-end" />
-                </Button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
