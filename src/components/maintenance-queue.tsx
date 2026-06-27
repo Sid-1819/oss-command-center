@@ -69,8 +69,8 @@ export default function MaintenanceQueue({
     },
     {
       id: 'release',
-      title: release?.suggestion ?? 'Prepare Release',
-      description: release?.explanation ?? 'Review and publish the next version',
+      title: release?.ready ? 'Release Ready' : 'Prepare Release',
+      description: release?.reason ?? 'Review and publish the next version',
       type: 'release',
       icon: <GitCommit className="size-4 text-primary" />,
       action: 'Start Release',
