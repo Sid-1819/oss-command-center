@@ -1,8 +1,7 @@
 'use client';
 
-import { GitPullRequest, ArrowRight } from 'lucide-react';
+import { GitPullRequest, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SectionHeader } from '@/components/section-header';
@@ -15,11 +14,19 @@ interface MergeQueueProps extends DashboardSectionStateProps {
   pullRequests?: number;
 }
 
+interface PR {
+  number: number;
+  status: 'ready' | 'review' | 'blocked';
+  readiness?: number; // 0-100
+  reasons?: string[];
+  blockers?: string[];
+}
+
 function MergeQueueSkeleton() {
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {Array.from({ length: 3 }).map((_, index) => (
-        <Skeleton key={index} className="h-16 rounded-xl" />
+        <Skeleton key={index} className="h-20 rounded-lg" />
       ))}
     </div>
   );
@@ -31,44 +38,52 @@ export default function MergeQueue({
   isEmpty,
 }: MergeQueueProps) {
   // Mock top 3 PRs for demonstration
-  const topPRs = [
+  const topPRs: PR[] = [
     {
-      id: 1,
-      title: 'Fix critical security vulnerability',
-      author: 'security-bot',
-      priority: 'urgent',
-      reviews: 2,
+      number: 58,
+      status: 'ready',
+      readiness: 98,
+      reasons: ['CI Passed', 'Approved', 'No conflicts'],
     },
     {
-      id: 2,
-      title: 'Add TypeScript support improvements',
-      author: 'contributor-a',
-      priority: 'high',
-      reviews: 1,
+      number: 54,
+      status: 'review',
     },
     {
-      id: 3,
-      title: 'Update dependencies to latest versions',
-      author: 'dependabot',
-      priority: 'medium',
-      reviews: 0,
+      number: 48,
+      status: 'blocked',
+      blockers: ['Waiting for maintainer approval', 'CI check failed'],
     },
   ];
 
+  const getStatusIcon = (status: PR['status']) => {
+    switch (status) {
+      case 'ready':
+        return <CheckCircle2 className="size-4 text-primary" />;
+      case 'review':
+        return <AlertCircle className="size-4 text-chart-2" />;
+      case 'blocked':
+        return <Lock className="size-4 text-destructive" />;
+    }
+  };
+
+  const getStatusLabel = (status: PR['status']) => {
+    switch (status) {
+      case 'ready':
+        return 'Merge Readiness';
+      case 'review':
+        return 'Needs review';
+      case 'blocked':
+        return 'Blocked';
+    }
+  };
+
   return (
-    <Card className="glass-panel glass-panel-hover border-0">
-      <CardHeader>
+    <Card className="glass-panel border-0">
+      <CardHeader className="pb-3">
         <SectionHeader
           icon={<GitPullRequest className="size-4" />}
           title="Merge Queue"
-          description="Top 3 AI-prioritized PRs"
-          action={
-            pullRequests > 0 ? (
-              <Badge variant="outline" className="border-white/[0.08] bg-secondary/50 tabular-nums">
-                {pullRequests} total
-              </Badge>
-            ) : undefined
-          }
         />
       </CardHeader>
 
@@ -82,50 +97,74 @@ export default function MergeQueue({
             No open pull requests in the merge queue.
           </p>
         ) : (
-          <div className="space-y-2.5">
-            {topPRs.map((pr) => (
-              <div
-                key={pr.id}
-                className="group list-item-interactive border-l-2 border-l-primary/40"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
-                    <GitPullRequest className="size-4 text-primary" />
+          <div className="space-y-0.5">
+            {topPRs.map((pr, index) => (
+              <div key={pr.number}>
+                <div className="space-y-2 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(pr.status)}
+                      <span className="text-sm font-medium">PR #{pr.number}</span>
+                    </div>
                   </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-1.5 flex items-start justify-between gap-3">
-                      <h3 className="text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
-                        {pr.title}
-                      </h3>
-                      <Badge
-                        variant={
-                          pr.priority === 'urgent'
-                            ? 'destructive'
-                            : pr.priority === 'high'
-                              ? 'secondary'
-                              : 'outline'
-                        }
-                        className="shrink-0 capitalize"
+                  {pr.status === 'ready' && (
+                    <div className="space-y-2 pl-6">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Merge Readiness</span>
+                        <span className="font-medium text-foreground">{pr.readiness}%</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-muted-foreground">Reason</div>
+                        <div className="space-y-1">
+                          {pr.reasons?.map((reason, i) => (
+                            <div key={i} className="flex items-center gap-2 text-xs text-foreground">
+                              <span className="text-primary">✓</span>
+                              <span>{reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="mt-2 w-full gap-2"
                       >
-                        {pr.priority}
-                      </Badge>
+                        <span>⚡</span>
+                        Merge
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{pr.author}</span>
-                      <span>•</span>
-                      <span>{pr.reviews} review{pr.reviews !== 1 ? 's' : ''}</span>
-                    </div>
-                  </div>
+                  )}
 
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <ArrowRight className="size-4" />
-                  </Button>
+                  {pr.status === 'review' && (
+                    <div className="pl-6">
+                      <p className="text-xs text-muted-foreground">Needs review</p>
+                    </div>
+                  )}
+
+                  {pr.status === 'blocked' && (
+                    <div className="space-y-2 pl-6">
+                      <div className="space-y-1">
+                        {pr.blockers?.map((blocker, i) => (
+                          <div key={i} className="text-xs text-muted-foreground">
+                            • {blocker}
+                          </div>
+                        ))}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto p-0 text-xs font-medium text-primary hover:text-primary hover:bg-transparent"
+                      >
+                        Show blockers
+                      </Button>
+                    </div>
+                  )}
                 </div>
+
+                {index < topPRs.length - 1 && (
+                  <div className="border-t border-border/40" />
+                )}
               </div>
             ))}
           </div>
