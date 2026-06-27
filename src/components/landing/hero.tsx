@@ -8,56 +8,59 @@ export default function Hero() {
     <section className="relative min-h-screen pt-32 pb-20 px-6 overflow-hidden">
       {/* Background glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/3 -right-1/4 w-96 h-96 bg-accent-primary/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-1/4 -left-1/4 w-96 h-96 bg-accent-secondary/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -right-1/4 w-96 h-96 bg-primary/8 rounded-full blur-3xl" />
+        <div className="absolute -bottom-1/4 -left-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
       </div>
 
       <div className="relative max-w-4xl mx-auto text-center">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 rounded-full bg-white/5 border border-accent-primary/30 text-sm text-accent-primary">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full bg-white/5 border border-primary/30 text-sm text-primary font-medium">
           <Sparkles className="w-3.5 h-3.5" />
           Introducing MaintainerOS
         </div>
 
         {/* Main headline */}
-        <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-balance">
-          <span className="bg-gradient-to-r from-accent-primary via-accent-primary to-accent-secondary bg-clip-text text-transparent">
-            Your operating system
-          </span>
+        <h1 className="text-5xl md:text-7xl font-bold mb-8 leading-tight text-balance">
+          The inbox OS
           <br />
-          for open source
+          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            for repository maintainers
+          </span>
         </h1>
 
         {/* Subheading */}
-        <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed max-w-2xl mx-auto text-balance">
-          An AI-powered workspace designed for maintainers who believe in intentional workflows over metrics-driven analytics. Take back control of your repositories.
+        <p className="text-lg md:text-xl text-muted-foreground mb-12 leading-relaxed max-w-2xl mx-auto text-balance">
+          AI-powered workspace for intentional maintenance workflows. Reduce noise, focus on what matters, ship with confidence.
         </p>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-          <Link href={loginUrl} className="inline-flex items-center justify-center px-6 py-3 bg-accent-primary text-black font-semibold rounded-lg hover:bg-accent-primary/90 transition-all hover:gap-2 group">
-            Start free
-            <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all" />
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-20">
+          <Link href={`${loginUrl}&provider=github`} className="inline-flex items-center justify-center px-8 py-3.5 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/20 group">
+            Continue with GitHub
+            <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-all" />
           </Link>
-          <button className="inline-flex items-center justify-center px-6 py-3 border border-white/10 rounded-lg hover:bg-white/5 transition-colors text-foreground font-semibold">
-            Watch demo
-          </button>
+          <div className="relative">
+            <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity pointer-events-none" />
+            <button className="px-6 py-3.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+              Developer login
+            </button>
+          </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="glass-panel p-6 max-w-2xl mx-auto">
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <div className="text-2xl font-bold text-accent-primary">500+</div>
-              <div className="text-sm text-muted-foreground">Active maintainers</div>
+        {/* Features bar */}
+        <div className="glass-panel p-8 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="space-y-2">
+              <div className="text-2xl font-bold text-primary">0</div>
+              <div className="text-sm text-muted-foreground">Setup required</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-accent-secondary">10k+</div>
-              <div className="text-sm text-muted-foreground">Repositories managed</div>
+            <div className="space-y-2">
+              <div className="text-2xl font-bold text-primary">∞</div>
+              <div className="text-sm text-muted-foreground">Repositories</div>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-accent-primary">50%</div>
-              <div className="text-sm text-muted-foreground">Time saved on triage</div>
+            <div className="space-y-2">
+              <div className="text-2xl font-bold text-primary">Instant</div>
+              <div className="text-sm text-muted-foreground">GitHub sync</div>
             </div>
           </div>
         </div>
