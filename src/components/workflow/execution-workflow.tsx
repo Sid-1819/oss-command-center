@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import type { MaintenanceAction, ExecutionResult as ExecutionResultType } from '@/types/execution-workflow';
 import type { ReadmePlanReview } from '@/types/readme-plan-review';
+import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import { PlanCard } from './plan-card';
 import { PlanStepsCard } from './plan-steps-card';
 import { DiffPreview } from './diff-preview';
@@ -16,12 +17,25 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { README_TARGET_FILE } from '@/actions/readme/types';
 
+export interface ExecuteWorkflowResult {
+  result: ExecutionResultType;
+  actionRun?: ActionRun;
+}
+
 interface ExecutionWorkflowProps {
   action: MaintenanceAction;
   mode?: 'review' | 'interactive';
   planReview?: ReadmePlanReview;
   onCancel?: () => void;
-  onExecute?: () => Promise<ExecutionResultType>;
+  onExecute?: () => Promise<ExecuteWorkflowResult>;
+  initialActionRun?: ActionRun | null;
+  initialCompletion?: ActionRunCompletion | null;
+  initialExecutionResult?: ExecutionResultType | null;
+  onRefreshStatus?: (actionRun: ActionRun) => Promise<{
+    actionRun: ActionRun;
+    completion?: ActionRunCompletion;
+  }>;
+  onExecuteReadmeSuggestion?: (suggestion: string) => void;
 }
 
 export function ExecutionWorkflow({
@@ -30,10 +44,24 @@ export function ExecutionWorkflow({
   planReview,
   onCancel,
   onExecute,
+  initialActionRun = null,
+  initialCompletion = null,
+  initialExecutionResult = null,
+  onRefreshStatus,
+  onExecuteReadmeSuggestion,
 }: ExecutionWorkflowProps) {
-  const [status, setStatus] = useState(action.status);
+  const [status, setStatus] = useState<MaintenanceAction['status']>(() =>
+    initialActionRun && initialExecutionResult ? 'complete' : action.status,
+  );
   const [isExecuting, setIsExecuting] = useState(false);
-  const [executionResult, setExecutionResult] = useState<ExecutionResultType | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [executionResult, setExecutionResult] = useState<ExecutionResultType | null>(
+    initialExecutionResult,
+  );
+  const [actionRun, setActionRun] = useState<ActionRun | null>(initialActionRun);
+  const [completion, setCompletion] = useState<ActionRunCompletion | null>(
+    initialCompletion,
+  );
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     changeset: true,
     diff: true,
@@ -53,8 +81,10 @@ export function ExecutionWorkflow({
 
     try {
       if (onExecute) {
-        const result = await onExecute();
+        const { result, actionRun: nextActionRun } = await onExecute();
         setExecutionResult(result);
+        setActionRun(nextActionRun ?? null);
+        setCompletion(null);
         setStatus(result.status === 'success' ? 'complete' : 'failed');
         return;
       }
@@ -96,11 +126,34 @@ export function ExecutionWorkflow({
     }
   }, [action.preflightChecks, onExecute]);
 
+  const handleRefreshStatus = useCallback(async () => {
+    if (!actionRun || !onRefreshStatus) {
+      return;
+    }
+
+    setIsRefreshing(true);
+
+    try {
+      const refreshed = await onRefreshStatus(actionRun);
+      setActionRun(refreshed.actionRun);
+      setCompletion(refreshed.completion ?? null);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [actionRun, onRefreshStatus]);
+
   const handleCancel = useCallback(() => {
     setIsExecuting(false);
     setStatus('review');
     if (onCancel) onCancel();
   }, [onCancel]);
+
+  const handleReset = useCallback(() => {
+    setStatus('review');
+    setExecutionResult(null);
+    setActionRun(null);
+    setCompletion(null);
+  }, []);
 
   const validationIssueCount = planReview
     ? planReview.validation.issues.length
@@ -246,10 +299,12 @@ export function ExecutionWorkflow({
           <ExecutionResult
             result={executionResult}
             action={action}
-            onReset={() => {
-              setStatus('review');
-              setExecutionResult(null);
-            }}
+            onReset={handleReset}
+            actionRun={actionRun ?? undefined}
+            onRefreshStatus={onRefreshStatus ? handleRefreshStatus : undefined}
+            isRefreshing={isRefreshing}
+            completion={completion ?? undefined}
+            onExecuteReadmeSuggestion={onExecuteReadmeSuggestion}
           />
         )}
       </div>

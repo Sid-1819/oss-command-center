@@ -1,3 +1,4 @@
+import type { ActionRun } from "@/types/action-run";
 import type { ValidationResult } from "@/actions/core/types";
 import type { ApplyReadmePlanResult } from "@/actions/readme/apply-plan";
 import type {
@@ -64,6 +65,7 @@ export type ExecuteReadmeActionResult =
       success: true;
       output: ReadmeExecutionOutput;
       report: ReadmeActionReport;
+      actionRun?: ActionRun;
     }
   | {
       success: false;

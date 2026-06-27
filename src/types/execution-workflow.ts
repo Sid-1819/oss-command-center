@@ -53,6 +53,7 @@ export interface ExecutionResult {
   checksPassedCount: number;
   checksFailedCount: number;
   prUrl?: string;
+  pullRequestNumber?: number;
   branchName?: string;
   canRollback: boolean;
 }

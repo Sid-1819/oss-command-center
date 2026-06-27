@@ -24,6 +24,7 @@ export function toExecutionResult(
     checksPassedCount,
     checksFailedCount,
     prUrl: output.prUrl ?? undefined,
+    pullRequestNumber: output.prNumber ?? undefined,
     branchName: output.branchName ?? undefined,
     canRollback: false,
   };

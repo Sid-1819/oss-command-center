@@ -5,6 +5,7 @@ import { readmeExecutor } from "@/actions/readme/executor";
 import { readmeReporter } from "@/actions/readme/reporter";
 import { ReadmeActionError } from "@/actions/readme/types";
 import { readmeValidator } from "@/actions/readme/validator";
+import { buildReadmeActionRun } from "@/lib/action-run/build-action-run";
 import { AuthError, requireSession } from "@/lib/auth";
 import { createOctokit, getRepository } from "@/lib/github";
 import { parseRepositoryRef } from "@/lib/parse-repository-ref";
@@ -123,11 +124,17 @@ export async function executeReadmeAction(
   try {
     const output = await readmeExecutor.execute(input.plan, context);
     const report = readmeReporter.report(output);
+    const actionRun = buildReadmeActionRun(
+      parsed.repositoryRef,
+      input.plan,
+      output,
+    );
 
     return {
       success: true,
       output,
       report,
+      actionRun: actionRun ?? undefined,
     };
   } catch (error) {
     if (error instanceof ReadmeActionError) {

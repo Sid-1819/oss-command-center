@@ -123,3 +123,49 @@ export async function createBranch(
     422,
   );
 }
+
+export interface DeleteBranchParams {
+  accessToken: string;
+  owner: string;
+  repo: string;
+  branch: string;
+}
+
+export interface DeleteBranchResult {
+  success: boolean;
+  warning?: string;
+}
+
+export async function deleteBranch(
+  params: DeleteBranchParams,
+): Promise<DeleteBranchResult> {
+  const octokit = createOctokit(params.accessToken);
+  const ref = normalizeRef(params.branch);
+
+  try {
+    await octokit.rest.git.deleteRef({
+      owner: params.owner,
+      repo: params.repo,
+      ref,
+    });
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof RequestError) {
+      if (error.status === 422 || error.status === 404) {
+        return {
+          success: false,
+          warning: `Could not delete branch ${params.branch}: ${error.message}`,
+        };
+      }
+    }
+
+    const message =
+      error instanceof Error ? error.message : "Unknown branch deletion error";
+
+    return {
+      success: false,
+      warning: `Could not delete branch ${params.branch}: ${message}`,
+    };
+  }
+}
