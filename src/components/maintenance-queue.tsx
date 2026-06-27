@@ -10,6 +10,7 @@ import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
+import { PreviewListDialog } from '@/components/preview-list-dialog';
 import type { DocumentationFileSuggestion, MaintainerBriefing } from '@/types/maintainer-briefing';
 
 interface MaintenanceQueueProps extends DashboardSectionStateProps {
@@ -115,11 +116,28 @@ export default function MaintenanceQueue({
         ) : isEmpty || maintenanceTasks.length === 0 ? (
           <DashboardEmptyState />
         ) : (
-          <div className="space-y-2.5">
-            {maintenanceTasks.map((task) => (
+          <PreviewListDialog
+            items={maintenanceTasks}
+            dialogTitle="All maintenance tasks"
+            getItemKey={(task) => task.id}
+            renderItem={(task) => (
               <div
-                key={task.id}
-                className="group list-item-interactive border-l-2 border-l-chart-2/40"
+                role={task.actionCallback ? 'button' : undefined}
+                tabIndex={task.actionCallback ? 0 : undefined}
+                className={`group list-item-interactive border-l-2 border-l-chart-2/40${
+                  task.actionCallback ? ' cursor-pointer' : ''
+                }`}
+                onClick={task.actionCallback ? task.actionCallback : undefined}
+                onKeyDown={
+                  task.actionCallback
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          task.actionCallback?.();
+                        }
+                      }
+                    : undefined
+                }
               >
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-white/[0.06]">
@@ -145,15 +163,18 @@ export default function MaintenanceQueue({
                       variant="ghost"
                       size="icon-sm"
                       className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={task.actionCallback}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        task.actionCallback?.();
+                      }}
                     >
                       <ArrowRight className="size-4" />
                     </Button>
                   ) : null}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          />
         )}
       </CardContent>
     </Card>

@@ -1,6 +1,8 @@
 'use client';
 
 import { FileText, Lightbulb, Rocket, Users, Wrench } from 'lucide-react';
+import { PreviewListDialog } from '@/components/preview-list-dialog';
+import { TOP_RECOMMENDED_ACTIONS_LIMIT } from '@/lib/action-run/next-recommended-actions';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { RecommendedAction } from '@/types/action-run';
@@ -37,6 +39,60 @@ function CategoryIcon({ category }: { category: RecommendedAction['category'] })
   }
 }
 
+function RecommendedActionCard({
+  action,
+  onExecuteDoc,
+  onFixIssue,
+}: {
+  action: RecommendedAction;
+  onExecuteDoc?: (targetFile: string, suggestion: string) => void;
+  onFixIssue?: (issueNumber: number) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border/40 bg-muted/20 p-4">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">
+          <CategoryIcon category={action.category} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium">{action.title}</p>
+            <Badge variant="outline" className="text-xs">
+              {categoryLabels[action.category]}
+            </Badge>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">{action.reason}</p>
+          {action.executable &&
+          action.actionType === 'markdown-doc' &&
+          action.payload?.suggestion &&
+          action.payload.targetFile ? (
+            <Button
+              size="sm"
+              className="mt-3"
+              onClick={() =>
+                onExecuteDoc?.(action.payload!.targetFile!, action.payload!.suggestion!)
+              }
+            >
+              Update {action.payload.targetFile}
+            </Button>
+          ) : null}
+          {action.executable &&
+          action.actionType === 'issue-fix' &&
+          action.payload?.issueNumber ? (
+            <Button
+              size="sm"
+              className="mt-3"
+              onClick={() => onFixIssue?.(action.payload!.issueNumber!)}
+            >
+              Review fix
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function NextRecommendedActions({
   actions,
   onExecuteDoc,
@@ -51,53 +107,19 @@ export function NextRecommendedActions({
   }
 
   return (
-    <div className="space-y-3">
-      {actions.map((action) => (
-        <div
-          key={action.id}
-          className="rounded-lg border border-border/40 bg-muted/20 p-4"
-        >
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5">
-              <CategoryIcon category={action.category} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium">{action.title}</p>
-                <Badge variant="outline" className="text-xs">
-                  {categoryLabels[action.category]}
-                </Badge>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">{action.reason}</p>
-              {action.executable &&
-              action.actionType === 'markdown-doc' &&
-              action.payload?.suggestion &&
-              action.payload.targetFile ? (
-                <Button
-                  size="sm"
-                  className="mt-3"
-                  onClick={() =>
-                    onExecuteDoc?.(action.payload!.targetFile!, action.payload!.suggestion!)
-                  }
-                >
-                  Update {action.payload.targetFile}
-                </Button>
-              ) : null}
-              {action.executable &&
-              action.actionType === 'issue-fix' &&
-              action.payload?.issueNumber ? (
-                <Button
-                  size="sm"
-                  className="mt-3"
-                  onClick={() => onFixIssue?.(action.payload!.issueNumber!)}
-                >
-                  Review fix
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
+    <PreviewListDialog
+      items={actions}
+      previewCount={TOP_RECOMMENDED_ACTIONS_LIMIT}
+      dialogTitle="All recommended actions"
+      getItemKey={(action) => action.id}
+      listClassName="space-y-3"
+      renderItem={(action) => (
+        <RecommendedActionCard
+          action={action}
+          onExecuteDoc={onExecuteDoc}
+          onFixIssue={onFixIssue}
+        />
+      )}
+    />
   );
 }

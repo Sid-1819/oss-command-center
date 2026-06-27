@@ -1,6 +1,6 @@
 'use client';
 
-import { Zap, TrendingUp, Clock, Calendar, Sparkles } from 'lucide-react';
+import { Zap, Bot, Clock, Calendar, Sparkles } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,51 +10,8 @@ import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
+import { countAiAutomatableTasks } from '@/lib/maintainer-briefing-utils';
 import type { MaintainerBriefing } from '@/types/maintainer-briefing';
-
-function HealthRing({ score }: { score: number }) {
-  const radius = 36;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-
-  return (
-    <div className="relative flex size-24 items-center justify-center">
-      <svg className="size-24 -rotate-90" viewBox="0 0 80 80">
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="6"
-          className="text-secondary"
-        />
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke="url(#healthGradient)"
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className="transition-all duration-1000 ease-out"
-        />
-        <defs>
-          <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="oklch(0.72 0.17 162)" />
-            <stop offset="100%" stopColor="oklch(0.65 0.18 250)" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold tabular-nums">{score}</span>
-        <span className="text-[10px] text-muted-foreground">/ 100</span>
-      </div>
-    </div>
-  );
-}
 
 function estimateMaintenanceMinutes(
   priorities: MaintainerBriefing['priorities']
@@ -100,6 +57,7 @@ export default function MaintainerBriefing({
   const maintenanceMinutes = briefing
     ? estimateMaintenanceMinutes(briefing.priorities)
     : null;
+  const aiReadyTaskCount = briefing ? countAiAutomatableTasks(briefing) : 0;
   const healthScore = briefing?.repositoryHealth.score ?? 0;
   const isHealthy = healthScore >= 70;
 
@@ -138,19 +96,21 @@ export default function MaintainerBriefing({
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="metric-tile flex items-center gap-4 md:col-span-1">
-                <HealthRing score={healthScore} />
-                <div>
-                  <div className="mb-1 flex items-center gap-1.5">
-                    <TrendingUp className="size-3.5 text-primary" />
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Health Score
-                    </span>
+              <div className="metric-tile">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
+                    <Bot className="size-4 text-primary" />
                   </div>
-                  <p className="text-sm font-medium text-foreground">
-                    {briefing.repositoryHealth.explanation}
-                  </p>
+                  <span className="text-xs font-medium text-muted-foreground">
+                    AI-ready tasks
+                  </span>
                 </div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-3xl font-bold tabular-nums">{aiReadyTaskCount}</span>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Issues and doc updates MaintainerOS can draft PRs for
+                </p>
               </div>
 
               <div className="metric-tile">

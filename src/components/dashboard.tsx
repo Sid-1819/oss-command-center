@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import { analyzeRepositoryDashboard } from '@/actions/analyzeRepositoryDashboard';
 import AiSettingsSheet from '@/components/ai-settings-sheet';
+import { AiLoadingPanel } from '@/components/ai-loading-panel';
 import Header from '@/components/header';
 import MaintainerBriefing from '@/components/maintainer-briefing';
 import TodaysPriorities from '@/components/todays-priorities';
@@ -16,7 +17,6 @@ import MaintenanceQueue from '@/components/maintenance-queue';
 import SecurityOverview from '@/components/security-overview';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import {
   getEffectiveAiConfig,
   isAiConfigReady,
@@ -39,16 +39,6 @@ interface DashboardProps {
   user: ClientSessionUser | null;
   initialRepositoryRef?: string;
   demoMode?: boolean;
-}
-
-function formatElapsed(seconds: number): string {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
 }
 
 export default function Dashboard({
@@ -225,18 +215,19 @@ export default function Dashboard({
         </div>
       )}
 
-      {isAnalyzing && (
+      {isAnalyzing ? (
         <div className="mx-auto w-full max-w-7xl px-6 pt-4">
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Spinner className="size-4" />
-            <span>
-              {demoMode
-                ? `Loading demo briefing… (${formatElapsed(elapsedSeconds)})`
-                : `Fetching GitHub data and generating AI briefing… (${formatElapsed(elapsedSeconds)})`}
-            </span>
-          </div>
+          <AiLoadingPanel
+            message={
+              demoMode
+                ? 'Loading demo briefing…'
+                : 'Fetching GitHub data and generating AI briefing…'
+            }
+            elapsedSeconds={elapsedSeconds}
+            compact
+          />
         </div>
-      )}
+      ) : null}
 
       {hasSuccessfulResult ? (
         <div className="mx-auto flex w-full max-w-7xl justify-end px-6 pt-4">

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SectionHeader } from '@/components/section-header';
+import { PreviewListDialog } from '@/components/preview-list-dialog';
 import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
@@ -97,9 +98,13 @@ export default function MergeQueue({
             No open pull requests in the merge queue.
           </p>
         ) : (
-          <div className="space-y-0.5">
-            {topPRs.map((pr, index) => (
-              <div key={pr.number}>
+          <PreviewListDialog
+            items={topPRs}
+            dialogTitle="All pull requests"
+            getItemKey={(pr) => String(pr.number)}
+            listClassName="space-y-0.5"
+            renderItem={(pr, index) => (
+              <div>
                 <div className="space-y-2 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
@@ -125,11 +130,7 @@ export default function MergeQueue({
                           ))}
                         </div>
                       </div>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="mt-2 w-full gap-2"
-                      >
+                      <Button variant="default" size="sm" className="mt-2 w-full gap-2">
                         <span>⚡</span>
                         Merge
                       </Button>
@@ -154,7 +155,7 @@ export default function MergeQueue({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-auto p-0 text-xs font-medium text-primary hover:text-primary hover:bg-transparent"
+                        className="h-auto p-0 text-xs font-medium text-primary hover:bg-transparent hover:text-primary"
                       >
                         Show blockers
                       </Button>
@@ -162,12 +163,12 @@ export default function MergeQueue({
                   )}
                 </div>
 
-                {index < topPRs.length - 1 && (
+                {index < topPRs.length - 1 ? (
                   <div className="border-t border-border/40" />
-                )}
+                ) : null}
               </div>
-            ))}
-          </div>
+            )}
+          />
         )}
       </CardContent>
     </Card>

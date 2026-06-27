@@ -2,6 +2,47 @@ import { normalizeBriefing } from "@/lib/maintainer-briefing-utils";
 import type { RecommendedAction } from "@/types/action-run";
 import type { MaintainerBriefing } from "@/types/maintainer-briefing";
 
+export const TOP_RECOMMENDED_ACTIONS_LIMIT = 3;
+
+const PRIORITY_WEIGHT: Record<"high" | "medium" | "low", number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+const CATEGORY_WEIGHT: Record<RecommendedAction["category"], number> = {
+  "auto-fix": 0,
+  documentation: 1,
+  priority: 2,
+  release: 3,
+  contributor: 4,
+  recommendation: 5,
+};
+
+function prioritySortKey(action: RecommendedAction): number {
+  return CATEGORY_WEIGHT[action.category];
+}
+
+export function rankRecommendedActions(actions: RecommendedAction[]): RecommendedAction[] {
+  return [...actions].sort((left, right) => {
+    const leftExecutable = left.executable ? 0 : 1;
+    const rightExecutable = right.executable ? 0 : 1;
+
+    if (leftExecutable !== rightExecutable) {
+      return leftExecutable - rightExecutable;
+    }
+
+    const leftCategory = prioritySortKey(left);
+    const rightCategory = prioritySortKey(right);
+
+    if (leftCategory !== rightCategory) {
+      return leftCategory - rightCategory;
+    }
+
+    return left.title.localeCompare(right.title);
+  });
+}
+
 export function buildNextRecommendedActions(
   briefing: MaintainerBriefing,
 ): RecommendedAction[] {
@@ -34,7 +75,9 @@ export function buildNextRecommendedActions(
     });
   }
 
-  for (const [index, priority] of normalized.priorities.entries()) {
+  for (const [index, priority] of [...normalized.priorities]
+    .sort((left, right) => PRIORITY_WEIGHT[left.priority] - PRIORITY_WEIGHT[right.priority])
+    .entries()) {
     actions.push({
       id: `priority-${index}`,
       category: "priority",
@@ -74,5 +117,11 @@ export function buildNextRecommendedActions(
     });
   }
 
-  return actions;
+  return rankRecommendedActions(actions);
+}
+
+export function getTopRecommendedActions(
+  briefing: MaintainerBriefing,
+): RecommendedAction[] {
+  return buildNextRecommendedActions(briefing).slice(0, TOP_RECOMMENDED_ACTIONS_LIMIT);
 }

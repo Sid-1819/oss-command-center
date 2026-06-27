@@ -10,6 +10,7 @@ import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
+import { PreviewListDialog } from '@/components/preview-list-dialog';
 import { normalizeBriefing } from '@/lib/maintainer-briefing-utils';
 import type { MaintainerBriefing } from '@/types/maintainer-briefing';
 
@@ -52,11 +53,26 @@ export default function AutoFixCandidates({
         ) : isEmpty || candidates.length === 0 ? (
           <DashboardEmptyState />
         ) : (
-          <div className="space-y-2.5">
-            {candidates.map((candidate) => (
+          <PreviewListDialog
+            items={candidates}
+            dialogTitle="All auto-fix candidates"
+            getItemKey={(candidate) => String(candidate.issueNumber)}
+            renderItem={(candidate) => (
               <div
-                key={candidate.issueNumber}
-                className="group list-item-interactive border-l-2 border-l-primary/40"
+                role={onReviewFix ? 'button' : undefined}
+                tabIndex={onReviewFix ? 0 : undefined}
+                className="group list-item-interactive cursor-pointer border-l-2 border-l-primary/40"
+                onClick={onReviewFix ? () => onReviewFix(candidate.issueNumber) : undefined}
+                onKeyDown={
+                  onReviewFix
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          onReviewFix(candidate.issueNumber);
+                        }
+                      }
+                    : undefined
+                }
               >
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
@@ -81,7 +97,10 @@ export default function AutoFixCandidates({
                       size="sm"
                       variant="ghost"
                       className="shrink-0 opacity-0 group-hover:opacity-100"
-                      onClick={() => onReviewFix(candidate.issueNumber)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onReviewFix(candidate.issueNumber);
+                      }}
                     >
                       Review fix
                       <ArrowRight className="ml-1 size-4" />
@@ -89,8 +108,8 @@ export default function AutoFixCandidates({
                   ) : null}
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          />
         )}
       </CardContent>
     </Card>

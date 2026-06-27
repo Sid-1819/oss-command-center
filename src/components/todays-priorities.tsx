@@ -10,6 +10,7 @@ import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
+import { PreviewListDialog } from '@/components/preview-list-dialog';
 import { cn } from '@/lib/utils';
 import type { MaintainerBriefing } from '@/types/maintainer-briefing';
 
@@ -80,16 +81,17 @@ export default function TodaysPriorities({
             No priorities identified for this repository.
           </p>
         ) : (
-          <div className="space-y-2.5">
-            {priorities.map((item, index) => {
+          <PreviewListDialog
+            items={priorities}
+            dialogTitle="All priorities"
+            emptyMessage="No priorities identified for this repository."
+            getItemKey={(item, index) => `${item.title}-${index}`}
+            renderItem={(item, index) => {
               const config = priorityConfig[item.priority];
               const Icon = config.icon;
 
               return (
-                <div
-                  key={`${item.title}-${index}`}
-                  className={cn('group list-item-interactive border-l-2', config.accent)}
-                >
+                <div className={cn('group list-item-interactive border-l-2', config.accent)}>
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-white/[0.06]">
                       <Icon className="size-4 text-muted-foreground" />
@@ -120,8 +122,8 @@ export default function TodaysPriorities({
                   </div>
                 </div>
               );
-            })}
-          </div>
+            }}
+          />
         )}
       </CardContent>
     </Card>

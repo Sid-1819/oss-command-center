@@ -10,6 +10,7 @@ import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
+import { PreviewListDialog } from '@/components/preview-list-dialog';
 import type { RepositoryAnalysis } from '@/types/repository-analysis';
 
 interface SecurityOverviewProps extends DashboardSectionStateProps {
@@ -32,6 +33,65 @@ interface SecurityIssue {
   severity: 'critical' | 'high' | 'medium' | 'low';
   description: string;
   icon: React.ReactNode;
+}
+
+const severityConfig = {
+  critical: {
+    borderColor: 'border-l-destructive/60',
+    bgColor: 'bg-destructive/5',
+    ringColor: 'ring-destructive/20',
+    badgeVariant: 'destructive' as const,
+  },
+  high: {
+    borderColor: 'border-l-chart-4/60',
+    bgColor: 'bg-chart-4/5',
+    ringColor: 'ring-chart-4/20',
+    badgeVariant: 'secondary' as const,
+  },
+  medium: {
+    borderColor: 'border-l-chart-3/60',
+    bgColor: 'bg-chart-3/5',
+    ringColor: 'ring-chart-3/20',
+    badgeVariant: 'outline' as const,
+  },
+  low: {
+    borderColor: 'border-l-primary/40',
+    bgColor: 'bg-primary/5',
+    ringColor: 'ring-primary/20',
+    badgeVariant: 'outline' as const,
+  },
+};
+
+function renderSecurityIssue(issue: SecurityIssue) {
+  const config = severityConfig[issue.severity];
+
+  return (
+    <div
+      className={`rounded-lg border-l-2 ${config.borderColor} ${config.bgColor} ring-1 ${config.ringColor} p-3`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary/50 ring-1 ring-white/[0.06]">
+          {issue.icon}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex items-start justify-between gap-3">
+            <h3 className="text-sm font-medium leading-snug text-foreground">{issue.title}</h3>
+            <Badge variant={config.badgeVariant} className="shrink-0 capitalize text-xs">
+              {issue.severity}
+            </Badge>
+          </div>
+          <p className="text-xs leading-relaxed text-muted-foreground">{issue.description}</p>
+        </div>
+
+        {issue.severity !== 'low' ? (
+          <Button variant="ghost" size="sm" className="h-7 shrink-0 text-xs">
+            Review
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export default function SecurityOverview({
@@ -97,75 +157,13 @@ export default function SecurityOverview({
         ) : isEmpty ? (
           <DashboardEmptyState />
         ) : (
-          <div className="space-y-3">
-            {securityIssues.map((issue) => {
-              const severityConfig = {
-                critical: {
-                  borderColor: 'border-l-destructive/60',
-                  bgColor: 'bg-destructive/5',
-                  ringColor: 'ring-destructive/20',
-                  badgeVariant: 'destructive' as const,
-                },
-                high: {
-                  borderColor: 'border-l-chart-4/60',
-                  bgColor: 'bg-chart-4/5',
-                  ringColor: 'ring-chart-4/20',
-                  badgeVariant: 'secondary' as const,
-                },
-                medium: {
-                  borderColor: 'border-l-chart-3/60',
-                  bgColor: 'bg-chart-3/5',
-                  ringColor: 'ring-chart-3/20',
-                  badgeVariant: 'outline' as const,
-                },
-                low: {
-                  borderColor: 'border-l-primary/40',
-                  bgColor: 'bg-primary/5',
-                  ringColor: 'ring-primary/20',
-                  badgeVariant: 'outline' as const,
-                },
-              };
-
-              const config = severityConfig[issue.severity];
-
-              return (
-                <div
-                  key={issue.id}
-                  className={`rounded-lg border-l-2 ${config.borderColor} ${config.bgColor} ring-1 ${config.ringColor} p-3`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary/50 ring-1 ring-white/[0.06]">
-                      {issue.icon}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-medium leading-snug text-foreground">
-                          {issue.title}
-                        </h3>
-                        <Badge variant={config.badgeVariant} className="shrink-0 capitalize text-xs">
-                          {issue.severity}
-                        </Badge>
-                      </div>
-                      <p className="text-xs leading-relaxed text-muted-foreground">
-                        {issue.description}
-                      </p>
-                    </div>
-
-                    {issue.severity !== 'low' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="shrink-0 h-7 text-xs"
-                      >
-                        Review
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <PreviewListDialog
+            items={securityIssues}
+            dialogTitle="All security issues"
+            getItemKey={(issue) => issue.id}
+            listClassName="space-y-3"
+            renderItem={(issue) => renderSecurityIssue(issue)}
+          />
         )}
       </CardContent>
     </Card>

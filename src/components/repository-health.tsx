@@ -58,8 +58,8 @@ export default function RepositoryHealth({
           icon: <TrendingUp className="size-4 text-primary" />,
           label: 'Health Score',
           value: String(briefing?.repositoryHealth.score ?? '—'),
-          description: briefing?.repositoryHealth.explanation ?? 'Overall repository health',
           iconBg: 'bg-primary/10 ring-primary/20',
+          hideDescription: true,
         },
         {
           icon: <Star className="size-4 text-chart-3" />,
@@ -131,11 +131,11 @@ export default function RepositoryHealth({
                       )}
                     </div>
                   </div>
-                  {metric.description && (
+                  {metric.description && !metric.hideDescription ? (
                     <p className="shrink-0 max-w-[120px] text-right text-[11px] text-muted-foreground">
                       {metric.description}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ))}

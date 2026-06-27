@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Spinner } from '@/components/ui/spinner';
 import { NextRecommendedActions } from '@/components/workflow/next-recommended-actions';
+import { HealthScoreDelta } from '@/components/health-score-delta';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import type { MaintenanceAction, ExecutionResult as ExecutionResultType } from '@/types/execution-workflow';
 
@@ -20,6 +21,7 @@ interface ExecutionResultProps {
   completion?: ActionRunCompletion;
   onExecuteDocSuggestion?: (targetFile: string, suggestion: string) => void;
   onFixIssue?: (issueNumber: number) => void;
+  previousHealthScore?: number;
 }
 
 function formatDate(iso?: string): string {
@@ -40,6 +42,7 @@ export function ExecutionResult({
   completion,
   onExecuteDocSuggestion,
   onFixIssue,
+  previousHealthScore,
 }: ExecutionResultProps) {
   const isSuccess = result.status === 'success';
   const isAwaitingReview = actionRun?.status === 'AWAITING_REVIEW';
@@ -307,6 +310,12 @@ export function ExecutionResult({
 
         {isCompleted && completion ? (
           <div className="space-y-3 pt-4 border-t border-border/30">
+            {completion.briefing && previousHealthScore !== undefined ? (
+              <HealthScoreDelta
+                previousScore={previousHealthScore}
+                newScore={completion.briefing.repositoryHealth.score}
+              />
+            ) : null}
             <p className="text-sm font-medium">Next Recommended Actions</p>
             <NextRecommendedActions
               actions={completion.nextActions}

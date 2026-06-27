@@ -10,6 +10,7 @@ import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
+import { PreviewListDialog } from '@/components/preview-list-dialog';
 import type { MaintainerBriefing } from '@/types/maintainer-briefing';
 import type { RepositoryAnalysis } from '@/types/repository-analysis';
 
@@ -66,17 +67,18 @@ export default function ContributorOpportunities({
             No contributor opportunities identified.
           </p>
         ) : (
-          <div className="space-y-2.5">
-            {opportunities.map((opportunity, index) => {
+          <PreviewListDialog
+            items={opportunities}
+            dialogTitle="All contributor opportunities"
+            emptyMessage="No contributor opportunities identified."
+            getItemKey={(opportunity, index) => `${opportunity.issueNumber}-${index}`}
+            renderItem={(opportunity) => {
               const title =
                 issueTitleByNumber.get(opportunity.issueNumber) ??
                 `Issue #${opportunity.issueNumber}`;
 
               return (
-                <div
-                  key={`${opportunity.issueNumber}-${index}`}
-                  className="group list-item-interactive"
-                >
+                <div className="group list-item-interactive">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -101,8 +103,8 @@ export default function ContributorOpportunities({
                   </div>
                 </div>
               );
-            })}
-          </div>
+            }}
+          />
         )}
       </CardContent>
     </Card>

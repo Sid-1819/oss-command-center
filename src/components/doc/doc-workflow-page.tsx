@@ -1,23 +1,27 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { refreshActionRunStatus } from '@/actions/action-run';
 import { executeMarkdownDocAction } from '@/actions/markdown-doc/executeMarkdownDocAction';
 import { planMarkdownDocAction } from '@/actions/markdown-doc/planMarkdownDocAction';
 import type { MarkdownDocExecutionPlan } from '@/actions/markdown-doc/types';
+import { AiLoadingPanel } from '@/components/ai-loading-panel';
 import { ExecutionWorkflow } from '@/components/workflow/execution-workflow';
 import type { ExecuteWorkflowResult } from '@/components/workflow/execution-workflow';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import {
   findActionRunForRepository,
   loadActionRunCompletion,
   saveActionRun,
 } from '@/lib/action-run/storage';
+import {
+  buildDemoCompletedActionRun,
+  buildDemoRefreshCompletion,
+} from '@/lib/demo/refresh-completion';
 import {
   buildDocPlanReview,
   clearPlanReview,
@@ -26,22 +30,14 @@ import {
 } from '@/lib/actions/plan-review-storage';
 import { toExecutionResult } from '@/lib/actions/to-execution-result';
 import { toDocMaintenanceAction } from '@/lib/actions/to-maintenance-action';
+import { getEffectiveAiConfig, isAiConfigReady } from '@/lib/ai/client-settings';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import type { ExecutionResult, MaintenanceAction } from '@/types/execution-workflow';
-import {
-  getEffectiveAiConfig,
-} from '@/lib/ai/client-settings';
 import {
   DOC_PLAN_CONTEXT_KEY,
   type DocPlanContext,
   type DocPlanReview,
 } from '@/types/doc-plan-review';
-
-function formatElapsed(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}m ${seconds % 60}s`;
-}
 
 function readPlanContext(): DocPlanContext | null {
   if (typeof window === 'undefined') return null;
@@ -95,13 +91,24 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
   const [action, setAction] = useState<MaintenanceAction | null>(null);
   const [plan, setPlan] = useState<MarkdownDocExecutionPlan | null>(null);
   const [planReview, setPlanReview] = useState<DocPlanReview | null>(null);
+  const [docContext, setDocContext] = useState<DocPlanContext | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isPlanning, setIsPlanning] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isPlanning, setIsPlanning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [restoredActionRun, setRestoredActionRun] = useState<ActionRun | null>(null);
   const [restoredCompletion, setRestoredCompletion] = useState<ActionRunCompletion | null>(null);
   const [restoredExecutionResult, setRestoredExecutionResult] =
     useState<ExecutionResult | null>(null);
+  const [previousHealthScore, setPreviousHealthScore] = useState<number | undefined>();
+
+  const canStartAnalysis = useMemo(() => {
+    if (!docContext || docContext.repositoryRef !== repo || docContext.targetFile !== targetFile) {
+      return false;
+    }
+    const config = docContext.aiConfig ?? getEffectiveAiConfig();
+    return demoMode || docContext.demoMode || isAiConfigReady(config);
+  }, [demoMode, docContext, repo, targetFile]);
 
   useEffect(() => {
     if (!isPlanning) return;
@@ -129,106 +136,141 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
   }, [repo, targetFile]);
 
   useEffect(() => {
-    let isCancelled = false;
+    setIsInitializing(true);
+    setErrorMessage(null);
+    setAction(null);
+    setPlan(null);
+    setPlanReview(null);
+    setDocContext(null);
 
-    async function loadPlan() {
-      setIsPlanning(true);
-      setErrorMessage(null);
-      setAction(null);
-      setPlan(null);
-      setPlanReview(null);
-
-      if (!repo || !suggestion) {
-        setErrorMessage(
-          'Missing repository or suggestion. Start from the dashboard Maintenance Queue.',
-        );
-        setIsPlanning(false);
-        return;
-      }
-
-      const cachedReview = loadPlanReview(repo, targetFile, suggestion);
-      if (cachedReview) {
-        setPlan(cachedReview.plan);
-        setPlanReview(cachedReview);
-        setAction(
-          toDocMaintenanceAction(
-            cachedReview.plan,
-            cachedReview.preview,
-            cachedReview.validation,
-            cachedReview.repositoryRef,
-            cachedReview.suggestion,
-          ),
-        );
-        setIsPlanning(false);
-        return;
-      }
-
-      const context = readPlanContext();
-      if (!context) {
-        setErrorMessage(
-          'Analysis context expired. Go back to the dashboard, analyze again, then start a doc update.',
-        );
-        setIsPlanning(false);
-        return;
-      }
-
-      if (context.repositoryRef !== repo || context.targetFile !== targetFile) {
-        setErrorMessage('Repository or file mismatch. Start again from the dashboard.');
-        setIsPlanning(false);
-        return;
-      }
-
-      if (context.suggestion !== suggestion) {
-        setErrorMessage('Suggestion mismatch. Start again from the dashboard.');
-        setIsPlanning(false);
-        return;
-      }
-
-      const result = await planMarkdownDocAction({
-        repositoryRef: context.repositoryRef,
-        targetFile: context.targetFile,
-        suggestion: context.suggestion,
-        analysis: context.analysis,
-        briefing: context.briefing,
-        aiConfig: context.aiConfig ?? getEffectiveAiConfig(),
-        demoMode: context.demoMode ?? demoMode,
-      });
-
-      if (isCancelled) return;
-
-      if (!result.success) {
-        setErrorMessage(result.error.message);
-        setIsPlanning(false);
-        return;
-      }
-
-      const review = buildDocPlanReview(
-        context.repositoryRef,
-        context.targetFile,
-        context.suggestion,
-        result,
+    if (!repo || !suggestion) {
+      setErrorMessage(
+        'Missing repository or suggestion. Start from the dashboard Maintenance Queue.',
       );
-
-      savePlanReview(review);
-      setPlan(review.plan);
-      setPlanReview(review);
-      setAction(
-        toDocMaintenanceAction(
-          review.plan,
-          review.preview,
-          review.validation,
-          review.repositoryRef,
-          review.suggestion,
-        ),
-      );
-      setIsPlanning(false);
+      setIsInitializing(false);
+      return;
     }
 
-    void loadPlan();
-    return () => {
-      isCancelled = true;
-    };
+    const cachedReview = loadPlanReview(repo, targetFile, suggestion);
+    if (cachedReview) {
+      setPlan(cachedReview.plan);
+      setPlanReview(cachedReview);
+      setAction(
+        toDocMaintenanceAction(
+          cachedReview.plan,
+          cachedReview.preview,
+          cachedReview.validation,
+          cachedReview.repositoryRef,
+          cachedReview.suggestion,
+        ),
+      );
+      const context = readPlanContext();
+      if (context) {
+        setPreviousHealthScore(context.briefing.repositoryHealth.score);
+      }
+      setIsInitializing(false);
+      return;
+    }
+
+    const context = readPlanContext();
+    if (!context) {
+      setErrorMessage(
+        'Analysis context expired. Go back to the dashboard, analyze again, then start a doc update.',
+      );
+      setIsInitializing(false);
+      return;
+    }
+
+    if (context.repositoryRef !== repo || context.targetFile !== targetFile) {
+      setErrorMessage('Repository or file mismatch. Start again from the dashboard.');
+      setIsInitializing(false);
+      return;
+    }
+
+    if (context.suggestion !== suggestion) {
+      setErrorMessage('Suggestion mismatch. Start again from the dashboard.');
+      setIsInitializing(false);
+      return;
+    }
+
+    setDocContext(context);
+    setPreviousHealthScore(context.briefing.repositoryHealth.score);
+    setIsInitializing(false);
   }, [repo, targetFile, suggestion]);
+
+  const handleStartAnalysis = useCallback(async () => {
+    const context = docContext ?? readPlanContext();
+    if (!context || context.repositoryRef !== repo || context.targetFile !== targetFile) {
+      setErrorMessage('Analysis context expired. Start again from the dashboard.');
+      return;
+    }
+
+    if (context.suggestion !== suggestion) {
+      setErrorMessage('Suggestion mismatch. Start again from the dashboard.');
+      return;
+    }
+
+    const aiConfig = context.aiConfig ?? getEffectiveAiConfig();
+    if (!demoMode && !context.demoMode && !isAiConfigReady(aiConfig)) {
+      setErrorMessage('Configure an AI provider in settings before starting analysis.');
+      return;
+    }
+
+    setIsPlanning(true);
+    setElapsedSeconds(0);
+    setErrorMessage(null);
+    setAction(null);
+    setPlan(null);
+    setPlanReview(null);
+
+    const result = await planMarkdownDocAction({
+      repositoryRef: context.repositoryRef,
+      targetFile: context.targetFile,
+      suggestion: context.suggestion,
+      analysis: context.analysis,
+      briefing: context.briefing,
+      aiConfig,
+      demoMode: context.demoMode ?? demoMode,
+    });
+
+    if (!result.success) {
+      setErrorMessage(result.error.message);
+      setIsPlanning(false);
+      return;
+    }
+
+    const review = buildDocPlanReview(
+      context.repositoryRef,
+      context.targetFile,
+      context.suggestion,
+      result,
+    );
+
+    savePlanReview(review);
+    setPlan(review.plan);
+    setPlanReview(review);
+    setAction(
+      toDocMaintenanceAction(
+        review.plan,
+        review.preview,
+        review.validation,
+        review.repositoryRef,
+        review.suggestion,
+      ),
+    );
+    setIsPlanning(false);
+  }, [demoMode, docContext, repo, suggestion, targetFile]);
+
+  const handleReAnalyze = useCallback(() => {
+    clearPlanReview();
+    setPlan(null);
+    setPlanReview(null);
+    setAction(null);
+    setRestoredActionRun(null);
+    setRestoredCompletion(null);
+    setRestoredExecutionResult(null);
+    setErrorMessage(null);
+  }, []);
 
   const handleCreatePullRequest = useCallback(async (): Promise<ExecuteWorkflowResult> => {
     if (!planReview || !action) throw new Error('Plan review is not available.');
@@ -269,6 +311,23 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
 
   const handleRefreshStatus = useCallback(
     async (actionRun: ActionRun) => {
+      const context = readPlanContext();
+
+      if (demoMode && context) {
+        const completion = buildDemoRefreshCompletion({
+          analysis: context.analysis,
+          briefing: context.briefing,
+        });
+        const completedRun = buildDemoCompletedActionRun(actionRun);
+
+        saveActionRun(completedRun, completion);
+        setRestoredActionRun(completedRun);
+        setRestoredCompletion(completion);
+        setRestoredExecutionResult(buildRestoredExecutionResult(completedRun));
+
+        return { actionRun: completedRun, completion };
+      }
+
       const refreshed = await refreshActionRunStatus(actionRun);
       if (!refreshed.success) throw new Error(refreshed.error.message);
 
@@ -282,7 +341,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
             item.payload?.targetFile === targetFile,
         );
 
-        const context: DocPlanContext = {
+        const nextContext: DocPlanContext = {
           repositoryRef: actionRun.repositoryRef,
           targetFile,
           suggestion:
@@ -292,7 +351,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
           analyzedAt: new Date().toISOString(),
         };
 
-        sessionStorage.setItem(DOC_PLAN_CONTEXT_KEY, JSON.stringify(context));
+        sessionStorage.setItem(DOC_PLAN_CONTEXT_KEY, JSON.stringify(nextContext));
       }
 
       setRestoredActionRun(refreshed.actionRun);
@@ -304,7 +363,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
         completion: refreshed.completion,
       };
     },
-    [planReview?.suggestion, suggestion, targetFile],
+    [demoMode, planReview?.suggestion, suggestion, targetFile],
   );
 
   const handleExecuteDocSuggestion = useCallback(
@@ -330,6 +389,9 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
     [demoMode, repo, router],
   );
 
+  const showLanding =
+    !isInitializing && !isPlanning && !planReview && docContext && !errorMessage;
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-4xl px-6 py-8">
@@ -353,16 +415,18 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
           ) : null}
         </div>
 
-        {isPlanning ? (
-          <div className="glass-panel flex flex-col items-center justify-center gap-3 p-12 text-center">
-            <Spinner className="size-6" />
-            <p className="text-sm text-muted-foreground">
-              Generating update plan… ({formatElapsed(elapsedSeconds)})
-            </p>
-          </div>
+        {isInitializing ? (
+          <AiLoadingPanel message="Loading workflow…" />
         ) : null}
 
-        {!isPlanning && errorMessage ? (
+        {isPlanning ? (
+          <AiLoadingPanel
+            message="Generating update plan…"
+            elapsedSeconds={elapsedSeconds}
+          />
+        ) : null}
+
+        {!isInitializing && !isPlanning && errorMessage ? (
           <Alert variant="destructive" className="border-destructive/30 bg-destructive/10">
             <AlertCircle />
             <AlertTitle>Unable to complete update</AlertTitle>
@@ -370,19 +434,54 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
           </Alert>
         ) : null}
 
+        {showLanding ? (
+          <div className="glass-panel space-y-6 rounded-xl border border-white/10 p-6">
+            <p className="text-sm text-muted-foreground">
+              Review the suggested change above, then start AI analysis to generate an update plan
+              and PR preview.
+            </p>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                className="gap-2"
+                disabled={!canStartAnalysis}
+                onClick={() => void handleStartAnalysis()}
+              >
+                <Sparkles className="size-4" />
+                Start AI analysis
+              </Button>
+              {!canStartAnalysis ? (
+                <p className="self-center text-xs text-muted-foreground">
+                  Configure an AI provider in dashboard settings first.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         {!isPlanning && action && plan && planReview ? (
-          <ExecutionWorkflow
-            action={action}
-            mode="review"
-            planReview={planReview}
-            targetFile={targetFile}
-            onExecute={handleCreatePullRequest}
-            initialActionRun={restoredActionRun}
-            initialCompletion={restoredCompletion}
-            initialExecutionResult={restoredExecutionResult}
-            onRefreshStatus={handleRefreshStatus}
-            onExecuteDocSuggestion={(file, sugg) => handleExecuteDocSuggestion(file, sugg)}
-          />
+          <div className="space-y-4">
+            {!restoredActionRun ? (
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={handleReAnalyze}>
+                  Re-analyze
+                </Button>
+              </div>
+            ) : null}
+            <ExecutionWorkflow
+              action={action}
+              mode="review"
+              planReview={planReview}
+              targetFile={targetFile}
+              onExecute={handleCreatePullRequest}
+              initialActionRun={restoredActionRun}
+              initialCompletion={restoredCompletion}
+              initialExecutionResult={restoredExecutionResult}
+              onRefreshStatus={handleRefreshStatus}
+              onExecuteDocSuggestion={(file, sugg) => handleExecuteDocSuggestion(file, sugg)}
+              previousHealthScore={previousHealthScore}
+            />
+          </div>
         ) : null}
       </div>
     </div>

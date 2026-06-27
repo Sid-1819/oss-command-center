@@ -13,6 +13,7 @@ import { PreflightChecks } from './preflight-checks';
 import { ExecutionControls } from './execution-controls';
 import { ExecutionProgress } from './execution-progress';
 import { ExecutionResult } from './execution-result';
+import { AiLoadingPanel } from '@/components/ai-loading-panel';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -37,6 +38,7 @@ interface ExecutionWorkflowProps {
   }>;
   onExecuteDocSuggestion?: (targetFile: string, suggestion: string) => void;
   onFixIssue?: (issueNumber: number) => void;
+  previousHealthScore?: number;
 }
 
 export function ExecutionWorkflow({
@@ -52,6 +54,7 @@ export function ExecutionWorkflow({
   onRefreshStatus,
   onExecuteDocSuggestion,
   onFixIssue,
+  previousHealthScore,
 }: ExecutionWorkflowProps) {
   const [status, setStatus] = useState<MaintenanceAction['status']>(() =>
     initialActionRun && initialExecutionResult ? 'complete' : action.status,
@@ -291,11 +294,14 @@ export function ExecutionWorkflow({
         )}
 
         {status === 'executing' && (
-          <ExecutionProgress
-            action={action}
-            isExecuting={isExecuting}
-            onCancel={handleCancel}
-          />
+          <>
+            <ExecutionProgress
+              action={action}
+              isExecuting={isExecuting}
+              onCancel={handleCancel}
+            />
+            <AiLoadingPanel message="Creating pull request…" compact />
+          </>
         )}
 
         {(status === 'complete' || status === 'failed') && executionResult && (
@@ -309,6 +315,7 @@ export function ExecutionWorkflow({
             completion={completion ?? undefined}
             onExecuteDocSuggestion={onExecuteDocSuggestion}
             onFixIssue={onFixIssue}
+            previousHealthScore={previousHealthScore}
           />
         )}
       </div>

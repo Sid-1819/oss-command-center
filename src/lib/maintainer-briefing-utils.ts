@@ -54,3 +54,13 @@ export function getAllDocumentationSuggestions(
 
   return items;
 }
+
+export function countAiAutomatableTasks(briefing: MaintainerBriefing): number {
+  const normalized = normalizeBriefing(briefing);
+  const docTasks = normalized.documentation.files.reduce(
+    (count, file) => count + file.suggestions.length,
+    0,
+  );
+
+  return normalized.autoFixCandidates.length + docTasks;
+}

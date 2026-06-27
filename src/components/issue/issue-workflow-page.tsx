@@ -1,18 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { refreshActionRunStatus } from '@/actions/action-run';
 import { executeIssueFixAction } from '@/actions/issue-fix/executeIssueFixAction';
 import { planIssueFixAction } from '@/actions/issue-fix/planIssueFixAction';
-import type { IssueFixExecutionPlan } from '@/actions/issue-fix/types';
+import { AiLoadingPanel } from '@/components/ai-loading-panel';
 import { ExecutionWorkflow } from '@/components/workflow/execution-workflow';
 import type { ExecuteWorkflowResult } from '@/components/workflow/execution-workflow';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import {
   findActionRunForRepository,
   loadActionRunCompletion,
@@ -20,12 +20,18 @@ import {
 } from '@/lib/action-run/storage';
 import {
   buildIssuePlanReview,
+  clearIssuePlanReview,
   loadIssuePlanReview,
   saveIssuePlanReview,
 } from '@/lib/actions/plan-review-storage';
 import { toExecutionResult } from '@/lib/actions/to-execution-result';
 import { toIssueMaintenanceAction } from '@/lib/actions/to-maintenance-action';
-import { getEffectiveAiConfig } from '@/lib/ai/client-settings';
+import { getEffectiveAiConfig, isAiConfigReady } from '@/lib/ai/client-settings';
+import { normalizeBriefing } from '@/lib/maintainer-briefing-utils';
+import {
+  buildDemoCompletedActionRun,
+  buildDemoRefreshCompletion,
+} from '@/lib/demo/refresh-completion';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import type { ExecutionResult, MaintenanceAction } from '@/types/execution-workflow';
 import {
@@ -33,11 +39,6 @@ import {
   type IssuePlanContext,
   type IssueFixPlanReview,
 } from '@/types/doc-plan-review';
-
-function formatElapsed(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
-}
 
 function readIssueContext(): IssuePlanContext | null {
   if (typeof window === 'undefined') return null;
@@ -81,13 +82,30 @@ export default function IssueWorkflowPage() {
 
   const [action, setAction] = useState<MaintenanceAction | null>(null);
   const [planReview, setPlanReview] = useState<IssueFixPlanReview | null>(null);
+  const [issueContext, setIssueContext] = useState<IssuePlanContext | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isPlanning, setIsPlanning] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isPlanning, setIsPlanning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [restoredActionRun, setRestoredActionRun] = useState<ActionRun | null>(null);
   const [restoredCompletion, setRestoredCompletion] = useState<ActionRunCompletion | null>(null);
   const [restoredExecutionResult, setRestoredExecutionResult] =
     useState<ExecutionResult | null>(null);
+  const [previousHealthScore, setPreviousHealthScore] = useState<number | undefined>();
+
+  const autoFixCandidate = useMemo(() => {
+    if (!issueContext) return null;
+    const normalized = normalizeBriefing(issueContext.briefing);
+    return normalized.autoFixCandidates.find(
+      (candidate) => candidate.issueNumber === issueNumber,
+    );
+  }, [issueContext, issueNumber]);
+
+  const canStartAnalysis = useMemo(() => {
+    if (!issueContext || issueContext.repositoryRef !== repo) return false;
+    const config = issueContext.aiConfig ?? getEffectiveAiConfig();
+    return demoMode || issueContext.demoMode || isAiConfigReady(config);
+  }, [demoMode, issueContext, repo]);
 
   useEffect(() => {
     if (!isPlanning) return;
@@ -114,81 +132,109 @@ export default function IssueWorkflowPage() {
   }, [repo, issueNumber]);
 
   useEffect(() => {
-    let cancelled = false;
+    setIsInitializing(true);
+    setErrorMessage(null);
+    setAction(null);
+    setPlanReview(null);
+    setIssueContext(null);
 
-    async function load() {
-      setIsPlanning(true);
-      setErrorMessage(null);
-      setAction(null);
-      setPlanReview(null);
+    if (!repo || !Number.isFinite(issueNumber)) {
+      setErrorMessage('Missing repository or issue number.');
+      setIsInitializing(false);
+      return;
+    }
 
-      if (!repo || !Number.isFinite(issueNumber)) {
-        setErrorMessage('Missing repository or issue number.');
-        setIsPlanning(false);
-        return;
-      }
-
-      const cachedReview = loadIssuePlanReview(repo, issueNumber);
-      if (cachedReview) {
-        setPlanReview(cachedReview);
-        setAction(
-          toIssueMaintenanceAction(
-            cachedReview.plan,
-            cachedReview.preview,
-            cachedReview.validation,
-            repo,
-            `Issue #${issueNumber}`,
-          ),
-        );
-        setIsPlanning(false);
-        return;
-      }
-
-      const context = readIssueContext();
-      if (!context || context.repositoryRef !== repo) {
-        setErrorMessage('Analysis context expired. Start from the dashboard Auto-Fix section.');
-        setIsPlanning(false);
-        return;
-      }
-
-      const result = await planIssueFixAction({
-        repositoryRef: context.repositoryRef,
-        issueNumber,
-        analysis: context.analysis,
-        briefing: context.briefing,
-        aiConfig: context.aiConfig ?? getEffectiveAiConfig(),
-        demoMode: context.demoMode ?? demoMode,
-      });
-
-      if (cancelled) return;
-
-      if (!result.success) {
-        setErrorMessage(result.error.message);
-        setIsPlanning(false);
-        return;
-      }
-
-      const review = buildIssuePlanReview(repo, issueNumber, result);
-
-      saveIssuePlanReview(review);
-      setPlanReview(review);
+    const cachedReview = loadIssuePlanReview(repo, issueNumber);
+    if (cachedReview) {
+      setPlanReview(cachedReview);
       setAction(
         toIssueMaintenanceAction(
-          result.plan,
-          result.preview,
-          result.validation,
+          cachedReview.plan,
+          cachedReview.preview,
+          cachedReview.validation,
           repo,
           `Issue #${issueNumber}`,
         ),
       );
-      setIsPlanning(false);
+      const context = readIssueContext();
+      if (context) {
+        setPreviousHealthScore(context.briefing.repositoryHealth.score);
+      }
+      setIsInitializing(false);
+      return;
     }
 
-    void load();
-    return () => {
-      cancelled = true;
-    };
+    const context = readIssueContext();
+    if (!context || context.repositoryRef !== repo) {
+      setErrorMessage('Analysis context expired. Start from the dashboard Auto-Fix section.');
+      setIsInitializing(false);
+      return;
+    }
+
+    setIssueContext(context);
+    setPreviousHealthScore(context.briefing.repositoryHealth.score);
+    setIsInitializing(false);
   }, [repo, issueNumber]);
+
+  const handleStartAnalysis = useCallback(async () => {
+    const context = issueContext ?? readIssueContext();
+    if (!context || context.repositoryRef !== repo) {
+      setErrorMessage('Analysis context expired. Start from the dashboard Auto-Fix section.');
+      return;
+    }
+
+    const aiConfig = context.aiConfig ?? getEffectiveAiConfig();
+    if (!demoMode && !context.demoMode && !isAiConfigReady(aiConfig)) {
+      setErrorMessage('Configure an AI provider in settings before starting analysis.');
+      return;
+    }
+
+    setIsPlanning(true);
+    setElapsedSeconds(0);
+    setErrorMessage(null);
+    setAction(null);
+    setPlanReview(null);
+
+    const result = await planIssueFixAction({
+      repositoryRef: context.repositoryRef,
+      issueNumber,
+      analysis: context.analysis,
+      briefing: context.briefing,
+      aiConfig,
+      demoMode: context.demoMode ?? demoMode,
+    });
+
+    if (!result.success) {
+      setErrorMessage(result.error.message);
+      setIsPlanning(false);
+      return;
+    }
+
+    const review = buildIssuePlanReview(repo, issueNumber, result);
+
+    saveIssuePlanReview(review);
+    setPlanReview(review);
+    setAction(
+      toIssueMaintenanceAction(
+        result.plan,
+        result.preview,
+        result.validation,
+        repo,
+        `Issue #${issueNumber}`,
+      ),
+    );
+    setIsPlanning(false);
+  }, [demoMode, issueContext, issueNumber, repo]);
+
+  const handleReAnalyze = useCallback(() => {
+    clearIssuePlanReview();
+    setPlanReview(null);
+    setAction(null);
+    setRestoredActionRun(null);
+    setRestoredCompletion(null);
+    setRestoredExecutionResult(null);
+    setErrorMessage(null);
+  }, []);
 
   const handleCreatePullRequest = useCallback(async (): Promise<ExecuteWorkflowResult> => {
     if (!planReview || !action) throw new Error('Plan not ready');
@@ -218,6 +264,23 @@ export default function IssueWorkflowPage() {
   }, [action, demoMode, planReview]);
 
   const handleRefreshStatus = useCallback(async (actionRun: ActionRun) => {
+    const context = readIssueContext();
+
+    if (demoMode && context) {
+      const completion = buildDemoRefreshCompletion({
+        analysis: context.analysis,
+        briefing: context.briefing,
+      });
+      const completedRun = buildDemoCompletedActionRun(actionRun);
+
+      saveActionRun(completedRun, completion);
+      setRestoredActionRun(completedRun);
+      setRestoredCompletion(completion);
+      setRestoredExecutionResult(buildRestoredExecutionResult(completedRun));
+
+      return { actionRun: completedRun, completion };
+    }
+
     const refreshed = await refreshActionRunStatus(actionRun);
     if (!refreshed.success) throw new Error(refreshed.error.message);
     saveActionRun(refreshed.actionRun, refreshed.completion);
@@ -225,7 +288,7 @@ export default function IssueWorkflowPage() {
     setRestoredCompletion(refreshed.completion ?? null);
     setRestoredExecutionResult(buildRestoredExecutionResult(refreshed.actionRun));
     return { actionRun: refreshed.actionRun, completion: refreshed.completion };
-  }, []);
+  }, [demoMode]);
 
   const handleFixIssue = useCallback(
     (num: number) => {
@@ -235,6 +298,9 @@ export default function IssueWorkflowPage() {
     },
     [repo, router],
   );
+
+  const showLanding =
+    !isInitializing && !isPlanning && !planReview && issueContext && !errorMessage;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -254,16 +320,19 @@ export default function IssueWorkflowPage() {
           </p>
         ) : null}
 
-        {isPlanning ? (
-          <div className="glass-panel mt-8 flex flex-col items-center gap-3 p-12 text-center">
-            <Spinner className="size-6" />
-            <p className="text-sm text-muted-foreground">
-              Generating fix plan… ({formatElapsed(elapsedSeconds)})
-            </p>
-          </div>
+        {isInitializing ? (
+          <AiLoadingPanel message="Loading workflow…" className="mt-8" />
         ) : null}
 
-        {!isPlanning && errorMessage ? (
+        {isPlanning ? (
+          <AiLoadingPanel
+            message="Generating fix plan…"
+            elapsedSeconds={elapsedSeconds}
+            className="mt-8"
+          />
+        ) : null}
+
+        {!isInitializing && !isPlanning && errorMessage ? (
           <Alert variant="destructive" className="mt-6">
             <AlertCircle />
             <AlertTitle>Unable to plan fix</AlertTitle>
@@ -271,8 +340,61 @@ export default function IssueWorkflowPage() {
           </Alert>
         ) : null}
 
+        {showLanding ? (
+          <div className="glass-panel mt-8 space-y-6 rounded-xl border border-white/10 p-6">
+            {autoFixCandidate ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="text-xs capitalize">
+                    {autoFixCandidate.fixType}
+                  </Badge>
+                </div>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {autoFixCandidate.reason}
+                </p>
+                {autoFixCandidate.suggestedFiles[0] ? (
+                  <p className="text-xs text-muted-foreground">
+                    Target:{' '}
+                    <code className="rounded bg-muted px-1">
+                      {autoFixCandidate.suggestedFiles[0]}
+                    </code>
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Review the issue context, then start AI analysis to generate a fix plan and PR
+                preview.
+              </p>
+            )}
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                className="gap-2"
+                disabled={!canStartAnalysis}
+                onClick={() => void handleStartAnalysis()}
+              >
+                <Sparkles className="size-4" />
+                Start AI analysis
+              </Button>
+              {!canStartAnalysis ? (
+                <p className="self-center text-xs text-muted-foreground">
+                  Configure an AI provider in dashboard settings first.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         {!isPlanning && action && planReview ? (
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
+            {!restoredActionRun ? (
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={handleReAnalyze}>
+                  Re-analyze
+                </Button>
+              </div>
+            ) : null}
             <ExecutionWorkflow
               action={action}
               mode="review"
@@ -284,6 +406,7 @@ export default function IssueWorkflowPage() {
               initialExecutionResult={restoredExecutionResult}
               onRefreshStatus={handleRefreshStatus}
               onFixIssue={handleFixIssue}
+              previousHealthScore={previousHealthScore}
             />
           </div>
         ) : null}
