@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import ReadmeWorkflowPage from '@/components/readme/readme-workflow-page';
+import DocWorkflowPage from '@/components/doc/doc-workflow-page';
 import { getLoginUrl } from '@/lib/auth';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -20,7 +20,7 @@ export default async function ReadmePage() {
         </div>
       }
     >
-      <ReadmeWorkflowPage />
+      <DocWorkflowPage defaultFile="README.md" />
     </Suspense>
   );
 }

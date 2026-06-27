@@ -107,6 +107,9 @@ function normalizeRepositoryAnalysis(
         typeof label === "string" ? label : label.name ?? "",
       ),
       createdAt: issue.created_at,
+      body: issue.body
+        ? issue.body.slice(0, 2000)
+        : undefined,
     })),
   };
 }

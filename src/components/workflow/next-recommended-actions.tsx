@@ -1,13 +1,14 @@
 'use client';
 
-import { FileText, Lightbulb, Rocket, Users } from 'lucide-react';
+import { FileText, Lightbulb, Rocket, Users, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { RecommendedAction } from '@/types/action-run';
 
 interface NextRecommendedActionsProps {
   actions: RecommendedAction[];
-  onExecuteReadme?: (suggestion: string) => void;
+  onExecuteDoc?: (targetFile: string, suggestion: string) => void;
+  onFixIssue?: (issueNumber: number) => void;
 }
 
 const categoryLabels: Record<RecommendedAction['category'], string> = {
@@ -16,12 +17,15 @@ const categoryLabels: Record<RecommendedAction['category'], string> = {
   release: 'Release',
   contributor: 'Contributor',
   recommendation: 'Recommendation',
+  'auto-fix': 'Auto-Fix',
 };
 
 function CategoryIcon({ category }: { category: RecommendedAction['category'] }) {
   switch (category) {
     case 'documentation':
       return <FileText className="size-4 text-primary" />;
+    case 'auto-fix':
+      return <Wrench className="size-4 text-primary" />;
     case 'priority':
       return <Lightbulb className="size-4 text-chart-3" />;
     case 'release':
@@ -35,7 +39,8 @@ function CategoryIcon({ category }: { category: RecommendedAction['category'] })
 
 export function NextRecommendedActions({
   actions,
-  onExecuteReadme,
+  onExecuteDoc,
+  onFixIssue,
 }: NextRecommendedActionsProps) {
   if (actions.length === 0) {
     return (
@@ -64,13 +69,29 @@ export function NextRecommendedActions({
                 </Badge>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">{action.reason}</p>
-              {action.executable && action.actionType === 'readme' && action.payload ? (
+              {action.executable &&
+              action.actionType === 'markdown-doc' &&
+              action.payload?.suggestion &&
+              action.payload.targetFile ? (
                 <Button
                   size="sm"
                   className="mt-3"
-                  onClick={() => onExecuteReadme?.(action.payload!.suggestion)}
+                  onClick={() =>
+                    onExecuteDoc?.(action.payload!.targetFile!, action.payload!.suggestion!)
+                  }
                 >
-                  Update README
+                  Update {action.payload.targetFile}
+                </Button>
+              ) : null}
+              {action.executable &&
+              action.actionType === 'issue-fix' &&
+              action.payload?.issueNumber ? (
+                <Button
+                  size="sm"
+                  className="mt-3"
+                  onClick={() => onFixIssue?.(action.payload!.issueNumber!)}
+                >
+                  Review fix
                 </Button>
               ) : null}
             </div>

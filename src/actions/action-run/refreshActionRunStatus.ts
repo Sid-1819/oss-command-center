@@ -131,6 +131,26 @@ export async function refreshActionRunStatus(
     branch: actionRun.branch,
   });
 
+  let issueClosed: boolean | undefined;
+  let issueCloseWarning: string | undefined;
+
+  if (
+    actionRun.actionType === "issue-fix" &&
+    actionRun.issueNumber &&
+    pullRequestStatus.merged
+  ) {
+    const { closeIssue } = await import("@/lib/github/issues");
+    const closeResult = await closeIssue({
+      accessToken: session.accessToken,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      issueNumber: actionRun.issueNumber,
+      comment: `Fixed in pull request #${actionRun.pullRequestNumber} (merged).`,
+    });
+    issueClosed = closeResult.success;
+    issueCloseWarning = closeResult.warning;
+  }
+
   const analysisResult = await analyzeRepositoryDashboard(parsed.repositoryRef);
 
   let completion: ActionRunCompletion = {
@@ -138,6 +158,8 @@ export async function refreshActionRunStatus(
     mergedBy: pullRequestStatus.mergedBy,
     branchDeleted: deleteResult.success,
     branchDeleteWarning: deleteResult.warning,
+    issueClosed,
+    issueCloseWarning,
     nextActions: [],
   };
 
@@ -160,6 +182,8 @@ export async function refreshActionRunStatus(
       mergedBy: pullRequestStatus.mergedBy,
       branchDeleted: deleteResult.success,
       branchDeleteWarning: deleteResult.warning,
+      issueClosed,
+      issueCloseWarning,
     },
     completion,
   };

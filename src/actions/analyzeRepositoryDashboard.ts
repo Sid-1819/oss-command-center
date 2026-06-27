@@ -2,16 +2,45 @@
 
 import { analyzeRepository } from "@/actions/analyzeRepository";
 import { generateMaintainerBriefing } from "@/actions/generateMaintainerBriefing";
+import {
+  DEMO_REPOSITORY_REF,
+  getDemoMaintainerBriefing,
+  getDemoRepositoryAnalysis,
+} from "@/lib/demo/mock-execution";
 import { trimAnalysisForClient } from "@/lib/repository-analysis-utils";
 import { parseRepositoryRef } from "@/lib/parse-repository-ref";
+import type { AiRequestConfig } from "@/lib/ai/types";
 import type { DashboardAnalysisResult } from "@/types/dashboard-analysis";
 import { AnalyzeRepositoryError } from "@/types/repository-analysis";
 import { GenerateMaintainerBriefingError } from "@/types/maintainer-briefing";
 
+export interface AnalyzeRepositoryDashboardInput {
+  repositoryRef: string;
+  aiConfig?: AiRequestConfig;
+  forceRefresh?: boolean;
+  demoMode?: boolean;
+}
+
 export async function analyzeRepositoryDashboard(
-  repositoryRef: string,
+  input: AnalyzeRepositoryDashboardInput | string,
 ): Promise<DashboardAnalysisResult> {
-  const parsed = parseRepositoryRef(repositoryRef);
+  const params: AnalyzeRepositoryDashboardInput =
+    typeof input === "string" ? { repositoryRef: input } : input;
+
+  if (params.demoMode) {
+    const analysis = getDemoRepositoryAnalysis();
+    const briefing = getDemoMaintainerBriefing();
+
+    return {
+      success: true,
+      analysis: trimAnalysisForClient(analysis, briefing),
+      briefing,
+      analyzedAt: new Date().toISOString(),
+      repositoryRef: DEMO_REPOSITORY_REF,
+    };
+  }
+
+  const parsed = parseRepositoryRef(params.repositoryRef);
 
   if (!parsed.success) {
     return {
@@ -51,7 +80,10 @@ export async function analyzeRepositoryDashboard(
   }
 
   try {
-    const briefing = await generateMaintainerBriefing(analysis);
+    const briefing = await generateMaintainerBriefing(analysis, {
+      aiConfig: params.aiConfig,
+      forceRefresh: params.forceRefresh,
+    });
 
     return {
       success: true,

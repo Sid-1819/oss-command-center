@@ -1,0 +1,64 @@
+{
+  "summary": "Focus on merging the streaming export PR, then refresh README env docs before the next release.",
+  "priorities": [
+    {
+      "title": "Review PR #58 streaming export",
+      "reason": "Largest feature in flight; blocks release notes and downstream docs.",
+      "priority": "high"
+    },
+    {
+      "title": "Update README environment variables",
+      "reason": "Issue #42 reports missing env var docs; quick win before release.",
+      "priority": "medium"
+    },
+    {
+      "title": "Fix CONTRIBUTING typo",
+      "reason": "Issue #37 is a single-line doc fix MaintainerOS can automate.",
+      "priority": "low"
+    }
+  ],
+  "repositoryHealth": {
+    "score": 78,
+    "explanation": "Active PR queue and responsive issue triage; documentation drift is the main gap."
+  },
+  "release": {
+    "ready": false,
+    "reason": "README env documentation should land before tagging v2.1."
+  },
+  "documentation": {
+    "outdated": true,
+    "files": [
+      {
+        "path": "README.md",
+        "suggestions": [
+          "Add an Environment Variables section listing API_KEY and DATABASE_URL with brief descriptions."
+        ]
+      },
+      {
+        "path": "CHANGELOG.md",
+        "suggestions": [
+          "Add an Unreleased section noting the streaming export feature from PR #58."
+        ]
+      }
+    ]
+  },
+  "contributorOpportunities": [
+    {
+      "issueNumber": 42,
+      "reason": "Clear documentation scope; good first issue for new contributors."
+    }
+  ],
+  "autoFixCandidates": [
+    {
+      "issueNumber": 37,
+      "reason": "Single typo in CONTRIBUTING.md install command; one-line replace.",
+      "effort": "low",
+      "fixType": "typo",
+      "suggestedFiles": ["CONTRIBUTING.md"]
+    }
+  ],
+  "recommendations": [
+    "Merge or close stale PRs older than two weeks.",
+    "Run a documentation pass before the next minor release."
+  ]
+}

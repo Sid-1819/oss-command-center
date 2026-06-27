@@ -18,7 +18,8 @@ interface ExecutionResultProps {
   onRefreshStatus?: () => Promise<void>;
   isRefreshing?: boolean;
   completion?: ActionRunCompletion;
-  onExecuteReadmeSuggestion?: (suggestion: string) => void;
+  onExecuteDocSuggestion?: (targetFile: string, suggestion: string) => void;
+  onFixIssue?: (issueNumber: number) => void;
 }
 
 function formatDate(iso?: string): string {
@@ -37,7 +38,8 @@ export function ExecutionResult({
   onRefreshStatus,
   isRefreshing = false,
   completion,
-  onExecuteReadmeSuggestion,
+  onExecuteDocSuggestion,
+  onFixIssue,
 }: ExecutionResultProps) {
   const isSuccess = result.status === 'success';
   const isAwaitingReview = actionRun?.status === 'AWAITING_REVIEW';
@@ -136,6 +138,11 @@ export function ExecutionResult({
                   <p className="text-chart-3">Branch deleted</p>
                 ) : actionRun.branchDeleteWarning ? (
                   <p className="text-amber-500">{actionRun.branchDeleteWarning}</p>
+                ) : null}
+                {actionRun.issueClosed ? (
+                  <p className="text-chart-3">Issue #{actionRun.issueNumber} closed</p>
+                ) : actionRun.issueCloseWarning ? (
+                  <p className="text-amber-500">{actionRun.issueCloseWarning}</p>
                 ) : null}
               </div>
             ) : null}
@@ -303,7 +310,8 @@ export function ExecutionResult({
             <p className="text-sm font-medium">Next Recommended Actions</p>
             <NextRecommendedActions
               actions={completion.nextActions}
-              onExecuteReadme={onExecuteReadmeSuggestion}
+              onExecuteDoc={onExecuteDocSuggestion}
+              onFixIssue={onFixIssue}
             />
           </div>
         ) : null}

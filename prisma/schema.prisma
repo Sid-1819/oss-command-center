@@ -22,3 +22,17 @@ model Repository {
   openPRs    Int
   createdAt  DateTime @default(now())
 }
+
+model AiResponseCache {
+  id           String   @id
+  operation    String
+  provider     String
+  model        String
+  inputHash    String
+  responseJson Json
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([operation, inputHash])
+  @@index([expiresAt])
+}

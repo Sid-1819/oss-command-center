@@ -1,0 +1,10 @@
+{
+  "summary": "Fix npm install typo in CONTRIBUTING.md install instructions.",
+  "steps": [
+    {
+      "operation": "replace_all",
+      "content": "npm install example-project",
+      "rationale": "Corrects the mistyped package name in the install command (issue #37)."
+    }
+  ]
+}

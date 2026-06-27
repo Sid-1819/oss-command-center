@@ -60,7 +60,8 @@ export async function runReadmeAction(
     readmeAction,
     {
       ...input,
-      currentReadme: file.content,
+      targetFile: README_TARGET_FILE,
+      currentContent: file.content,
       sourceSha: file.sha,
     },
     context,

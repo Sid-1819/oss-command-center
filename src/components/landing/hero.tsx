@@ -39,12 +39,12 @@ export default function Hero() {
             Continue with GitHub
             <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-all" />
           </Link>
-          <div className="relative">
-            <div className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity pointer-events-none" />
-            <button className="px-6 py-3.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
-              Developer login
-            </button>
-          </div>
+          <Link
+            href={loginUrl}
+            className="px-6 py-3.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+          >
+            Developer login
+          </Link>
         </div>
 
         {/* Features bar */}

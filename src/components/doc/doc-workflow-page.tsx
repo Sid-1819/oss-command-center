@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { refreshActionRunStatus } from '@/actions/action-run';
-import { executeReadmeAction } from '@/actions/readme/executeReadmeAction';
-import { planReadmeAction } from '@/actions/readme/planReadmeAction';
+import { executeMarkdownDocAction } from '@/actions/markdown-doc/executeMarkdownDocAction';
+import { planMarkdownDocAction } from '@/actions/markdown-doc/planMarkdownDocAction';
+import type { MarkdownDocExecutionPlan } from '@/actions/markdown-doc/types';
 import { ExecutionWorkflow } from '@/components/workflow/execution-workflow';
 import type { ExecuteWorkflowResult } from '@/components/workflow/execution-workflow';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -18,67 +19,39 @@ import {
   saveActionRun,
 } from '@/lib/action-run/storage';
 import {
-  buildReadmePlanReview,
+  buildDocPlanReview,
   clearPlanReview,
   loadPlanReview,
   savePlanReview,
-} from '@/lib/readme/plan-review-storage';
-import { toExecutionResult } from '@/lib/readme/to-execution-result';
-import { toMaintenanceAction } from '@/lib/readme/to-maintenance-action';
-import type { ReadmeExecutionPlan } from '@/actions/readme/types';
+} from '@/lib/actions/plan-review-storage';
+import { toExecutionResult } from '@/lib/actions/to-execution-result';
+import { toDocMaintenanceAction } from '@/lib/actions/to-maintenance-action';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import type { ExecutionResult, MaintenanceAction } from '@/types/execution-workflow';
 import {
-  README_PLAN_CONTEXT_KEY,
-  type ReadmePlanContext,
-  type ReadmePlanReview,
-} from '@/types/readme-plan-review';
+  getEffectiveAiConfig,
+} from '@/lib/ai/client-settings';
+import {
+  DOC_PLAN_CONTEXT_KEY,
+  type DocPlanContext,
+  type DocPlanReview,
+} from '@/types/doc-plan-review';
 
 function formatElapsed(seconds: number): string {
-  if (seconds < 60) {
-    return `${seconds}s`;
-  }
-
+  if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
+  return `${minutes}m ${seconds % 60}s`;
 }
 
-function readPlanContext(): ReadmePlanContext | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const raw = sessionStorage.getItem(README_PLAN_CONTEXT_KEY);
-
-  if (!raw) {
-    return null;
-  }
-
+function readPlanContext(): DocPlanContext | null {
+  if (typeof window === 'undefined') return null;
+  const raw = sessionStorage.getItem(DOC_PLAN_CONTEXT_KEY);
+  if (!raw) return null;
   try {
-    return JSON.parse(raw) as ReadmePlanContext;
+    return JSON.parse(raw) as DocPlanContext;
   } catch {
     return null;
   }
-}
-
-function applyPlanReview(
-  review: ReadmePlanReview,
-  setPlan: (plan: ReadmeExecutionPlan) => void,
-  setPlanReview: (review: ReadmePlanReview) => void,
-  setAction: (action: MaintenanceAction) => void,
-) {
-  setPlan(review.plan);
-  setPlanReview(review);
-  setAction(
-    toMaintenanceAction(
-      review.plan,
-      review.preview,
-      review.validation,
-      review.repositoryRef,
-      review.suggestion,
-    ),
-  );
 }
 
 function buildRestoredExecutionResult(actionRun: ActionRun): ExecutionResult {
@@ -107,53 +80,53 @@ const TRACKABLE_STATUSES: ActionRun['status'][] = [
   'CLOSED',
 ];
 
-export default function ReadmeWorkflowPage() {
+interface DocWorkflowPageProps {
+  defaultFile?: string;
+}
+
+export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkflowPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const repo = searchParams.get('repo')?.trim() ?? '';
+  const targetFile = searchParams.get('file')?.trim() || defaultFile;
   const suggestion = searchParams.get('suggestion')?.trim() ?? '';
+  const demoMode = searchParams.get('demo') === '1';
 
   const [action, setAction] = useState<MaintenanceAction | null>(null);
-  const [plan, setPlan] = useState<ReadmeExecutionPlan | null>(null);
-  const [planReview, setPlanReview] = useState<ReadmePlanReview | null>(null);
+  const [plan, setPlan] = useState<MarkdownDocExecutionPlan | null>(null);
+  const [planReview, setPlanReview] = useState<DocPlanReview | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPlanning, setIsPlanning] = useState(true);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [restoredActionRun, setRestoredActionRun] = useState<ActionRun | null>(null);
-  const [restoredCompletion, setRestoredCompletion] =
-    useState<ActionRunCompletion | null>(null);
+  const [restoredCompletion, setRestoredCompletion] = useState<ActionRunCompletion | null>(null);
   const [restoredExecutionResult, setRestoredExecutionResult] =
     useState<ExecutionResult | null>(null);
 
   useEffect(() => {
-    if (!isPlanning) {
-      return;
-    }
-
+    if (!isPlanning) return;
     const startedAt = Date.now();
-
     const intervalId = window.setInterval(() => {
       setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
     }, 1000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
+    return () => window.clearInterval(intervalId);
   }, [isPlanning]);
 
   useEffect(() => {
-    if (!repo) {
-      return;
-    }
-
+    if (!repo) return;
     const existingRun = findActionRunForRepository(repo);
-
-    if (existingRun && TRACKABLE_STATUSES.includes(existingRun.status)) {
+    if (
+      existingRun &&
+      TRACKABLE_STATUSES.includes(existingRun.status) &&
+      (existingRun.actionType === 'markdown-doc' ||
+        existingRun.actionType === 'readme') &&
+      (!existingRun.targetFile || existingRun.targetFile === targetFile)
+    ) {
       setRestoredActionRun(existingRun);
       setRestoredCompletion(loadActionRunCompletion());
       setRestoredExecutionResult(buildRestoredExecutionResult(existingRun));
     }
-  }, [repo]);
+  }, [repo, targetFile]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -167,56 +140,61 @@ export default function ReadmeWorkflowPage() {
 
       if (!repo || !suggestion) {
         setErrorMessage(
-          'Missing repository or suggestion. Start from the dashboard Documentation Drift section.',
+          'Missing repository or suggestion. Start from the dashboard Maintenance Queue.',
         );
         setIsPlanning(false);
         return;
       }
 
-      const cachedReview = loadPlanReview(repo, suggestion);
-
+      const cachedReview = loadPlanReview(repo, targetFile, suggestion);
       if (cachedReview) {
-        applyPlanReview(cachedReview, setPlan, setPlanReview, setAction);
+        setPlan(cachedReview.plan);
+        setPlanReview(cachedReview);
+        setAction(
+          toDocMaintenanceAction(
+            cachedReview.plan,
+            cachedReview.preview,
+            cachedReview.validation,
+            cachedReview.repositoryRef,
+            cachedReview.suggestion,
+          ),
+        );
         setIsPlanning(false);
         return;
       }
 
       const context = readPlanContext();
-
       if (!context) {
         setErrorMessage(
-          'Analysis context expired. Go back to the dashboard, analyze your repository again, then click Update README.',
+          'Analysis context expired. Go back to the dashboard, analyze again, then start a doc update.',
         );
         setIsPlanning(false);
         return;
       }
 
-      if (context.repositoryRef !== repo) {
-        setErrorMessage(
-          'Repository mismatch. Go back to the dashboard and start the README update again.',
-        );
+      if (context.repositoryRef !== repo || context.targetFile !== targetFile) {
+        setErrorMessage('Repository or file mismatch. Start again from the dashboard.');
         setIsPlanning(false);
         return;
       }
 
       if (context.suggestion !== suggestion) {
-        setErrorMessage(
-          'Suggestion mismatch. Go back to the dashboard and start the README update again.',
-        );
+        setErrorMessage('Suggestion mismatch. Start again from the dashboard.');
         setIsPlanning(false);
         return;
       }
 
-      const result = await planReadmeAction({
+      const result = await planMarkdownDocAction({
         repositoryRef: context.repositoryRef,
+        targetFile: context.targetFile,
         suggestion: context.suggestion,
         analysis: context.analysis,
         briefing: context.briefing,
+        aiConfig: context.aiConfig ?? getEffectiveAiConfig(),
+        demoMode: context.demoMode ?? demoMode,
       });
 
-      if (isCancelled) {
-        return;
-      }
+      if (isCancelled) return;
 
       if (!result.success) {
         setErrorMessage(result.error.message);
@@ -224,44 +202,52 @@ export default function ReadmeWorkflowPage() {
         return;
       }
 
-      const review = buildReadmePlanReview(
+      const review = buildDocPlanReview(
         context.repositoryRef,
+        context.targetFile,
         context.suggestion,
         result,
       );
 
       savePlanReview(review);
-      applyPlanReview(review, setPlan, setPlanReview, setAction);
+      setPlan(review.plan);
+      setPlanReview(review);
+      setAction(
+        toDocMaintenanceAction(
+          review.plan,
+          review.preview,
+          review.validation,
+          review.repositoryRef,
+          review.suggestion,
+        ),
+      );
       setIsPlanning(false);
     }
 
     void loadPlan();
-
     return () => {
       isCancelled = true;
     };
-  }, [repo, suggestion]);
+  }, [repo, targetFile, suggestion]);
 
   const handleCreatePullRequest = useCallback(async (): Promise<ExecuteWorkflowResult> => {
-    if (!planReview || !action) {
-      throw new Error('Plan review is not available.');
-    }
+    if (!planReview || !action) throw new Error('Plan review is not available.');
 
     setErrorMessage(null);
 
-    const result = await executeReadmeAction({
+    const result = await executeMarkdownDocAction({
       repositoryRef: planReview.repositoryRef,
       plan: planReview.plan,
+      demoMode: demoMode || readPlanContext()?.demoMode,
     });
 
     if (!result.success) {
-      if (result.error.code === 'README_CHANGED') {
+      if (result.error.code === 'README_CHANGED' || result.error.code === 'FILE_CHANGED') {
         clearPlanReview();
         setErrorMessage(
-          'README.md changed since this plan was created. Go back to the dashboard, analyze again, and click Update README to generate a fresh plan.',
+          `${targetFile} changed since this plan was created. Analyze again and start a fresh update.`,
         );
       }
-
       throw new Error(result.error.message);
     }
 
@@ -278,73 +264,70 @@ export default function ReadmeWorkflowPage() {
       setRestoredExecutionResult(executionResult);
     }
 
-    return {
-      result: executionResult,
-      actionRun: result.actionRun,
-    };
-  }, [action, planReview]);
+    return { result: executionResult, actionRun: result.actionRun };
+  }, [action, demoMode, planReview, targetFile]);
 
-  const handleRefreshStatus = useCallback(async (actionRun: ActionRun) => {
-    const refreshed = await refreshActionRunStatus(actionRun);
+  const handleRefreshStatus = useCallback(
+    async (actionRun: ActionRun) => {
+      const refreshed = await refreshActionRunStatus(actionRun);
+      if (!refreshed.success) throw new Error(refreshed.error.message);
 
-    if (!refreshed.success) {
-      throw new Error(refreshed.error.message);
-    }
+      saveActionRun(refreshed.actionRun, refreshed.completion);
 
-    saveActionRun(refreshed.actionRun, refreshed.completion);
-
-    if (refreshed.completion?.analysis && refreshed.completion.briefing) {
-      const context: ReadmePlanContext = {
-        repositoryRef: actionRun.repositoryRef,
-        suggestion:
-          refreshed.completion.nextActions.find(
-            (item) => item.executable && item.actionType === 'readme',
-          )?.payload?.suggestion ??
-          planReview?.suggestion ??
-          suggestion,
-        analysis: refreshed.completion.analysis,
-        briefing: refreshed.completion.briefing,
-        analyzedAt: new Date().toISOString(),
-      };
-
-      sessionStorage.setItem(README_PLAN_CONTEXT_KEY, JSON.stringify(context));
-    }
-
-    setRestoredActionRun(refreshed.actionRun);
-    setRestoredCompletion(refreshed.completion ?? null);
-    setRestoredExecutionResult(buildRestoredExecutionResult(refreshed.actionRun));
-
-    return {
-      actionRun: refreshed.actionRun,
-      completion: refreshed.completion,
-    };
-  }, [planReview?.suggestion, suggestion]);
-
-  const handleExecuteReadmeSuggestion = useCallback(
-    (nextSuggestion: string) => {
-      const context = readPlanContext();
-
-      if (!context || context.repositoryRef !== repo) {
-        setErrorMessage(
-          'Analysis context is unavailable. Refresh status after merge or analyze again from the dashboard.',
+      if (refreshed.completion?.analysis && refreshed.completion.briefing) {
+        const docSuggestion = refreshed.completion.nextActions.find(
+          (item) =>
+            item.executable &&
+            item.actionType === 'markdown-doc' &&
+            item.payload?.targetFile === targetFile,
         );
+
+        const context: DocPlanContext = {
+          repositoryRef: actionRun.repositoryRef,
+          targetFile,
+          suggestion:
+            docSuggestion?.payload?.suggestion ?? planReview?.suggestion ?? suggestion,
+          analysis: refreshed.completion.analysis,
+          briefing: refreshed.completion.briefing,
+          analyzedAt: new Date().toISOString(),
+        };
+
+        sessionStorage.setItem(DOC_PLAN_CONTEXT_KEY, JSON.stringify(context));
+      }
+
+      setRestoredActionRun(refreshed.actionRun);
+      setRestoredCompletion(refreshed.completion ?? null);
+      setRestoredExecutionResult(buildRestoredExecutionResult(refreshed.actionRun));
+
+      return {
+        actionRun: refreshed.actionRun,
+        completion: refreshed.completion,
+      };
+    },
+    [planReview?.suggestion, suggestion, targetFile],
+  );
+
+  const handleExecuteDocSuggestion = useCallback(
+    (nextFile: string, nextSuggestion: string) => {
+      const context = readPlanContext();
+      if (!context || context.repositoryRef !== repo) {
+        setErrorMessage('Analysis context unavailable. Refresh after merge or analyze again.');
         return;
       }
 
       clearPlanReview();
-
-      const nextContext: ReadmePlanContext = {
+      const nextContext: DocPlanContext = {
         ...context,
+        targetFile: nextFile,
         suggestion: nextSuggestion,
       };
-
-      sessionStorage.setItem(README_PLAN_CONTEXT_KEY, JSON.stringify(nextContext));
+      sessionStorage.setItem(DOC_PLAN_CONTEXT_KEY, JSON.stringify(nextContext));
 
       router.push(
-        `/app/readme?repo=${encodeURIComponent(repo)}&suggestion=${encodeURIComponent(nextSuggestion)}`,
+        `/app/doc?repo=${encodeURIComponent(repo)}&file=${encodeURIComponent(nextFile)}&suggestion=${encodeURIComponent(nextSuggestion)}${demoMode ? '&demo=1' : ''}`,
       );
     },
-    [repo, router],
+    [demoMode, repo, router],
   );
 
   return (
@@ -358,19 +341,15 @@ export default function ReadmeWorkflowPage() {
             </Link>
           </Button>
 
-          <h1 className="text-3xl font-bold">Update README</h1>
+          <h1 className="text-3xl font-bold">Update {targetFile}</h1>
           {repo ? (
             <p className="mt-2 text-sm text-muted-foreground">
               Repository:{' '}
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-                {repo}
-              </code>
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{repo}</code>
             </p>
           ) : null}
           {suggestion ? (
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              {suggestion}
-            </p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{suggestion}</p>
           ) : null}
         </div>
 
@@ -378,10 +357,7 @@ export default function ReadmeWorkflowPage() {
           <div className="glass-panel flex flex-col items-center justify-center gap-3 p-12 text-center">
             <Spinner className="size-6" />
             <p className="text-sm text-muted-foreground">
-              Generating README update plan… ({formatElapsed(elapsedSeconds)})
-            </p>
-            <p className="text-xs text-muted-foreground/80">
-              AI is reviewing documentation drift and drafting proposed changes.
+              Generating update plan… ({formatElapsed(elapsedSeconds)})
             </p>
           </div>
         ) : null}
@@ -389,7 +365,7 @@ export default function ReadmeWorkflowPage() {
         {!isPlanning && errorMessage ? (
           <Alert variant="destructive" className="border-destructive/30 bg-destructive/10">
             <AlertCircle />
-            <AlertTitle>Unable to complete README update</AlertTitle>
+            <AlertTitle>Unable to complete update</AlertTitle>
             <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         ) : null}
@@ -399,12 +375,13 @@ export default function ReadmeWorkflowPage() {
             action={action}
             mode="review"
             planReview={planReview}
+            targetFile={targetFile}
             onExecute={handleCreatePullRequest}
             initialActionRun={restoredActionRun}
             initialCompletion={restoredCompletion}
             initialExecutionResult={restoredExecutionResult}
             onRefreshStatus={handleRefreshStatus}
-            onExecuteReadmeSuggestion={handleExecuteReadmeSuggestion}
+            onExecuteDocSuggestion={(file, sugg) => handleExecuteDocSuggestion(file, sugg)}
           />
         ) : null}
       </div>

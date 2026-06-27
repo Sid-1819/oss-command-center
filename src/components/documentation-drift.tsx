@@ -10,11 +10,12 @@ import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
+import { normalizeDocumentationFiles } from '@/lib/maintainer-briefing-utils';
 import type { MaintainerBriefing } from '@/types/maintainer-briefing';
 
 interface DocumentationDriftProps extends DashboardSectionStateProps {
   documentation?: MaintainerBriefing['documentation'];
-  onUpdateReadme?: (suggestion: string) => void;
+  onUpdateDoc?: (targetFile: string, suggestion: string) => void;
 }
 
 function DocumentationDriftSkeleton() {
@@ -31,10 +32,17 @@ export default function DocumentationDrift({
   documentation,
   isLoading,
   isEmpty,
-  onUpdateReadme,
+  onUpdateDoc,
 }: DocumentationDriftProps) {
-  const suggestions = documentation?.suggestions ?? [];
-  const canUpdate = Boolean(onUpdateReadme) && !isLoading && !isEmpty;
+  const fileSuggestions = documentation
+    ? normalizeDocumentationFiles(documentation).flatMap((file) =>
+        file.suggestions.map((suggestion) => ({
+          path: file.path,
+          suggestion,
+        })),
+      )
+    : [];
+  const canUpdate = Boolean(onUpdateDoc) && !isLoading && !isEmpty;
 
   return (
     <Card className="glass-panel glass-panel-hover border-0">
@@ -47,7 +55,7 @@ export default function DocumentationDrift({
             documentation?.outdated ? (
               <Badge variant="destructive" className="gap-1">
                 <FileWarning className="size-3" />
-                {suggestions.length} suggestion{suggestions.length === 1 ? '' : 's'}
+                {fileSuggestions.length} suggestion{fileSuggestions.length === 1 ? '' : 's'}
               </Badge>
             ) : undefined
           }
@@ -59,31 +67,32 @@ export default function DocumentationDrift({
           <DocumentationDriftSkeleton />
         ) : isEmpty || !documentation ? (
           <DashboardEmptyState />
-        ) : suggestions.length === 0 ? (
+        ) : fileSuggestions.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             No documentation updates suggested.
           </p>
         ) : (
           <div className="space-y-2.5">
-            {suggestions.map((suggestion, index) => (
+            {fileSuggestions.map((item, index) => (
               <div
-                key={`${suggestion}-${index}`}
+                key={`${item.path}-${item.suggestion}-${index}`}
                 className="group list-item-interactive border-l-2 border-l-chart-3/60"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">{item.path}</p>
                     <p className="text-sm font-medium leading-relaxed text-foreground transition-colors group-hover:text-primary">
-                      {suggestion}
+                      {item.suggestion}
                     </p>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     disabled={!canUpdate}
-                    onClick={() => onUpdateReadme?.(suggestion)}
+                    onClick={() => onUpdateDoc?.(item.path, item.suggestion)}
                     className="shrink-0 gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   >
-                    Update README
+                    Update {item.path}
                     <ArrowRight className="size-4" />
                   </Button>
                 </div>

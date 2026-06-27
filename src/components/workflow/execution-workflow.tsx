@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import type { MaintenanceAction, ExecutionResult as ExecutionResultType } from '@/types/execution-workflow';
-import type { ReadmePlanReview } from '@/types/readme-plan-review';
+import type { DocPlanReview } from '@/types/doc-plan-review';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import { PlanCard } from './plan-card';
 import { PlanStepsCard } from './plan-steps-card';
@@ -15,7 +15,6 @@ import { ExecutionProgress } from './execution-progress';
 import { ExecutionResult } from './execution-result';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { README_TARGET_FILE } from '@/actions/readme/types';
 
 export interface ExecuteWorkflowResult {
   result: ExecutionResultType;
@@ -25,7 +24,8 @@ export interface ExecuteWorkflowResult {
 interface ExecutionWorkflowProps {
   action: MaintenanceAction;
   mode?: 'review' | 'interactive';
-  planReview?: ReadmePlanReview;
+  planReview?: DocPlanReview;
+  targetFile?: string;
   onCancel?: () => void;
   onExecute?: () => Promise<ExecuteWorkflowResult>;
   initialActionRun?: ActionRun | null;
@@ -35,20 +35,23 @@ interface ExecutionWorkflowProps {
     actionRun: ActionRun;
     completion?: ActionRunCompletion;
   }>;
-  onExecuteReadmeSuggestion?: (suggestion: string) => void;
+  onExecuteDocSuggestion?: (targetFile: string, suggestion: string) => void;
+  onFixIssue?: (issueNumber: number) => void;
 }
 
 export function ExecutionWorkflow({
   action,
   mode = 'interactive',
   planReview,
+  targetFile = 'README.md',
   onCancel,
   onExecute,
   initialActionRun = null,
   initialCompletion = null,
   initialExecutionResult = null,
   onRefreshStatus,
-  onExecuteReadmeSuggestion,
+  onExecuteDocSuggestion,
+  onFixIssue,
 }: ExecutionWorkflowProps) {
   const [status, setStatus] = useState<MaintenanceAction['status']>(() =>
     initialActionRun && initialExecutionResult ? 'complete' : action.status,
@@ -215,7 +218,7 @@ export function ExecutionWorkflow({
             {planReview ? (
               <DiffPreview
                 diff={planReview.previewDiff}
-                fileName={README_TARGET_FILE}
+                fileName={targetFile}
                 isExpanded={expandedSections.diff}
                 onToggle={() => toggleSection('diff')}
               />
@@ -304,7 +307,8 @@ export function ExecutionWorkflow({
             onRefreshStatus={onRefreshStatus ? handleRefreshStatus : undefined}
             isRefreshing={isRefreshing}
             completion={completion ?? undefined}
-            onExecuteReadmeSuggestion={onExecuteReadmeSuggestion}
+            onExecuteDocSuggestion={onExecuteDocSuggestion}
+            onFixIssue={onFixIssue}
           />
         )}
       </div>

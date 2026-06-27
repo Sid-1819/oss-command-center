@@ -1,6 +1,3 @@
-import type { MaintainerBriefing } from "@/types/maintainer-briefing";
-import type { RepositoryAnalysis } from "@/types/repository-analysis";
-
 export type ActionRunStatus =
   | "CREATED"
   | "AWAITING_REVIEW"
@@ -9,7 +6,7 @@ export type ActionRunStatus =
   | "CLOSED"
   | "FAILED";
 
-export type ActionRunType = "readme";
+export type ActionRunType = "markdown-doc" | "issue-fix" | "readme";
 
 export interface ActionRun {
   id: string;
@@ -22,10 +19,14 @@ export interface ActionRun {
   status: ActionRunStatus;
   createdAt: string;
   updatedAt: string;
+  targetFile?: string;
+  issueNumber?: number;
   mergedAt?: string;
   mergedBy?: string;
   branchDeleted?: boolean;
   branchDeleteWarning?: string;
+  issueClosed?: boolean;
+  issueCloseWarning?: string;
 }
 
 export type RecommendedActionCategory =
@@ -33,7 +34,8 @@ export type RecommendedActionCategory =
   | "priority"
   | "release"
   | "contributor"
-  | "recommendation";
+  | "recommendation"
+  | "auto-fix";
 
 export interface RecommendedAction {
   id: string;
@@ -43,7 +45,9 @@ export interface RecommendedAction {
   executable: boolean;
   actionType?: ActionRunType;
   payload?: {
-    suggestion: string;
+    suggestion?: string;
+    targetFile?: string;
+    issueNumber?: number;
   };
 }
 
@@ -52,9 +56,11 @@ export interface ActionRunCompletion {
   mergedAt?: string;
   branchDeleted?: boolean;
   branchDeleteWarning?: string;
+  issueClosed?: boolean;
+  issueCloseWarning?: string;
   nextActions: RecommendedAction[];
-  analysis?: RepositoryAnalysis;
-  briefing?: MaintainerBriefing;
+  analysis?: import("@/types/repository-analysis").RepositoryAnalysis;
+  briefing?: import("@/types/maintainer-briefing").MaintainerBriefing;
 }
 
 export type RefreshActionRunStatusResult =

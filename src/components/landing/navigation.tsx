@@ -21,11 +21,12 @@ export default function Navigation() {
         </div>
         
         <div className="flex items-center gap-3">
-          <button
+          <Link
+            href={loginUrl}
             className="hidden sm:inline-block px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
           >
             Developer login
-          </button>
+          </Link>
           <Link
             href={`${loginUrl}&provider=github`}
             className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"

@@ -16,6 +16,8 @@ interface HeaderProps {
   onAnalyze: () => void;
   isAnalyzing: boolean;
   activeRepository?: string;
+  aiSettings?: React.ReactNode;
+  demoMode?: boolean;
 }
 
 export default function Header({
@@ -25,6 +27,8 @@ export default function Header({
   onAnalyze,
   isAnalyzing,
   activeRepository,
+  aiSettings,
+  demoMode = false,
 }: HeaderProps) {
   const isLoggedIn = user !== null;
   const canAnalyze =
@@ -46,7 +50,9 @@ export default function Header({
             <h1 className="text-base font-semibold tracking-tight text-foreground">
               MaintainerOS
             </h1>
-            <p className="text-[11px] text-muted-foreground">AI workspace for open source</p>
+            <p className="text-[11px] text-muted-foreground">
+              {demoMode ? 'Demo workspace' : 'AI workspace for open source'}
+            </p>
           </div>
         </div>
 
@@ -55,7 +61,7 @@ export default function Header({
             <RepositoryPicker
               value={repositoryRef}
               onSelect={onRepositoryRefChange}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || demoMode}
             />
           ) : (
             <LoginButton />
@@ -63,6 +69,7 @@ export default function Header({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {aiSettings}
           {isLoggedIn && user ? <UserMenu user={user} /> : null}
           {activeRepository && (
             <Badge
@@ -87,7 +94,7 @@ export default function Header({
             ) : (
               <>
                 <Sparkles className="size-3.5" data-icon="inline-start" />
-                Analyze
+                {demoMode ? 'Load demo' : 'Analyze'}
               </>
             )}
           </Button>

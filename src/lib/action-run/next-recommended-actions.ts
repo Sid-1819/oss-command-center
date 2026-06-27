@@ -1,24 +1,40 @@
+import { normalizeBriefing } from "@/lib/maintainer-briefing-utils";
 import type { RecommendedAction } from "@/types/action-run";
 import type { MaintainerBriefing } from "@/types/maintainer-briefing";
 
 export function buildNextRecommendedActions(
   briefing: MaintainerBriefing,
 ): RecommendedAction[] {
+  const normalized = normalizeBriefing(briefing);
   const actions: RecommendedAction[] = [];
 
-  for (const [index, suggestion] of briefing.documentation.suggestions.entries()) {
+  for (const fileEntry of normalized.documentation.files) {
+    for (const [index, suggestion] of fileEntry.suggestions.entries()) {
+      actions.push({
+        id: `documentation-${fileEntry.path}-${index}`,
+        category: "documentation",
+        title: `Update ${fileEntry.path}`,
+        reason: suggestion,
+        executable: true,
+        actionType: "markdown-doc",
+        payload: { suggestion, targetFile: fileEntry.path },
+      });
+    }
+  }
+
+  for (const [index, candidate] of normalized.autoFixCandidates.entries()) {
     actions.push({
-      id: `documentation-${index}`,
-      category: "documentation",
-      title: "Update README",
-      reason: suggestion,
+      id: `auto-fix-${candidate.issueNumber}-${index}`,
+      category: "auto-fix",
+      title: `Fix issue #${candidate.issueNumber}`,
+      reason: candidate.reason,
       executable: true,
-      actionType: "readme",
-      payload: { suggestion },
+      actionType: "issue-fix",
+      payload: { issueNumber: candidate.issueNumber },
     });
   }
 
-  for (const [index, priority] of briefing.priorities.entries()) {
+  for (const [index, priority] of normalized.priorities.entries()) {
     actions.push({
       id: `priority-${index}`,
       category: "priority",
@@ -28,17 +44,17 @@ export function buildNextRecommendedActions(
     });
   }
 
-  if (briefing.release.reason.trim()) {
+  if (normalized.release.reason.trim()) {
     actions.push({
       id: "release-readiness",
       category: "release",
-      title: briefing.release.ready ? "Release ready" : "Release not ready",
-      reason: briefing.release.reason,
+      title: normalized.release.ready ? "Release ready" : "Release not ready",
+      reason: normalized.release.reason,
       executable: false,
     });
   }
 
-  for (const [index, opportunity] of briefing.contributorOpportunities.entries()) {
+  for (const [index, opportunity] of normalized.contributorOpportunities.entries()) {
     actions.push({
       id: `contributor-${opportunity.issueNumber}-${index}`,
       category: "contributor",
@@ -48,7 +64,7 @@ export function buildNextRecommendedActions(
     });
   }
 
-  for (const [index, recommendation] of briefing.recommendations.entries()) {
+  for (const [index, recommendation] of normalized.recommendations.entries()) {
     actions.push({
       id: `recommendation-${index}`,
       category: "recommendation",

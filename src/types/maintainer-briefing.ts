@@ -1,5 +1,25 @@
 import { z } from "zod";
 
+export type AutoFixFixType =
+  | "documentation"
+  | "typo"
+  | "config"
+  | "comment"
+  | "other";
+
+export interface DocumentationFileSuggestion {
+  path: string;
+  suggestions: string[];
+}
+
+export interface AutoFixCandidate {
+  issueNumber: number;
+  reason: string;
+  effort: "low";
+  fixType: AutoFixFixType;
+  suggestedFiles: string[];
+}
+
 export interface MaintainerBriefing {
   summary: string;
 
@@ -21,7 +41,7 @@ export interface MaintainerBriefing {
 
   documentation: {
     outdated: boolean;
-    suggestions: string[];
+    files: DocumentationFileSuggestion[];
   };
 
   contributorOpportunities: {
@@ -29,10 +49,19 @@ export interface MaintainerBriefing {
     reason: string;
   }[];
 
+  autoFixCandidates: AutoFixCandidate[];
+
   recommendations: string[];
 }
 
 const prioritySchema = z.enum(["high", "medium", "low"]);
+const autoFixFixTypeSchema = z.enum([
+  "documentation",
+  "typo",
+  "config",
+  "comment",
+  "other",
+]);
 
 export const maintainerBriefingSchema = z.object({
   summary: z
@@ -79,9 +108,20 @@ export const maintainerBriefingSchema = z.object({
       .describe(
         "Whether documentation likely needs updates based on repository activity.",
       ),
-    suggestions: z
-      .array(z.string())
-      .describe("Specific documentation updates to consider."),
+    files: z
+      .array(
+        z.object({
+          path: z
+            .string()
+            .describe(
+              "Markdown file path, e.g. README.md, CHANGELOG.md, CONTRIBUTING.md, docs/guide.md",
+            ),
+          suggestions: z
+            .array(z.string())
+            .describe("Specific updates for this file."),
+        }),
+      )
+      .describe("Per-file documentation update suggestions."),
   }),
   contributorOpportunities: z
     .array(
@@ -96,6 +136,28 @@ export const maintainerBriefingSchema = z.object({
       }),
     )
     .describe("Beginner-friendly issues from the input data only."),
+  autoFixCandidates: z
+    .array(
+      z.object({
+        issueNumber: z
+          .number()
+          .int()
+          .describe("Issue number from the provided open issues list."),
+        reason: z
+          .string()
+          .describe(
+            "Why MaintainerOS can fix this with a single-file, low-effort change.",
+          ),
+        effort: z.literal("low").describe("Must be low effort only."),
+        fixType: autoFixFixTypeSchema.describe("Category of the fix."),
+        suggestedFiles: z
+          .array(z.string())
+          .describe("Target file(s); prefer exactly one file."),
+      }),
+    )
+    .describe(
+      "Issues the maintainer can auto-fix via PR (single file, small diff, no dependency changes). Not for beginner contributors.",
+    ),
   recommendations: z
     .array(z.string())
     .describe("Concrete, actionable recommendations for the maintainer."),
@@ -105,7 +167,9 @@ export type GenerateMaintainerBriefingErrorCode =
   | "MISSING_API_KEY"
   | "INVALID_RESPONSE"
   | "VALIDATION"
-  | "AI_ERROR";
+  | "AI_ERROR"
+  | "RATE_LIMIT"
+  | "PROVIDER_NOT_IMPLEMENTED";
 
 export class GenerateMaintainerBriefingError extends Error {
   readonly code: GenerateMaintainerBriefingErrorCode;

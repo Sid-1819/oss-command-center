@@ -25,6 +25,7 @@ export interface RepositoryAnalysis {
     author: string;
     labels: string[];
     createdAt: string;
+    body?: string;
   }[];
 }
 

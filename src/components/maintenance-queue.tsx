@@ -10,12 +10,12 @@ import {
   DashboardEmptyState,
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
-import type { MaintainerBriefing } from '@/types/maintainer-briefing';
+import type { DocumentationFileSuggestion, MaintainerBriefing } from '@/types/maintainer-briefing';
 
 interface MaintenanceQueueProps extends DashboardSectionStateProps {
   release?: MaintainerBriefing['release'];
   documentation?: MaintainerBriefing['documentation'];
-  onUpdateReadme?: (suggestion: string) => void;
+  onUpdateDoc?: (targetFile: string, suggestion: string) => void;
 }
 
 function MaintenanceQueueSkeleton() {
@@ -32,41 +32,54 @@ interface MaintenanceTask {
   id: string;
   title: string;
   description: string;
-  type: 'readme' | 'changelog' | 'release' | 'build';
+  type: string;
   icon: React.ReactNode;
   action?: string;
   actionCallback?: () => void;
 }
 
+function iconForFile(path: string) {
+  const lower = path.toLowerCase();
+  if (lower.includes('changelog')) return <Book className="size-4 text-chart-3" />;
+  if (lower.includes('contributing')) return <CheckSquare className="size-4 text-chart-4" />;
+  return <FileText className="size-4 text-chart-2" />;
+}
+
+function buildDocTasks(
+  files: DocumentationFileSuggestion[],
+  onUpdateDoc?: (targetFile: string, suggestion: string) => void,
+): MaintenanceTask[] {
+  const tasks: MaintenanceTask[] = [];
+
+  for (const file of files) {
+    const suggestion = file.suggestions[0];
+    if (!suggestion) continue;
+
+    tasks.push({
+      id: `doc-${file.path}`,
+      title: `${file.path} needs update`,
+      description: suggestion,
+      type: file.path.replace(/\.md$/i, '').toLowerCase(),
+      icon: iconForFile(file.path),
+      action: 'Review & Update',
+      actionCallback: () => onUpdateDoc?.(file.path, suggestion),
+    });
+  }
+
+  return tasks;
+}
+
 export default function MaintenanceQueue({
   release,
   documentation,
-  onUpdateReadme,
+  onUpdateDoc,
   isLoading,
   isEmpty,
 }: MaintenanceQueueProps) {
+  const docTasks = buildDocTasks(documentation?.files ?? [], onUpdateDoc);
+
   const maintenanceTasks: MaintenanceTask[] = [
-    {
-      id: 'readme',
-      title: 'README Needs Update',
-      description: documentation?.suggestions?.[0] ?? 'Update documentation to reflect latest changes',
-      type: 'readme',
-      icon: <FileText className="size-4 text-chart-2" />,
-      action: 'Review & Update',
-      actionCallback: () => {
-        if (documentation?.suggestions?.[0] && onUpdateReadme) {
-          onUpdateReadme(documentation.suggestions[0]);
-        }
-      },
-    },
-    {
-      id: 'changelog',
-      title: 'CHANGELOG Maintenance',
-      description: 'Add entries for recent releases and bug fixes',
-      type: 'changelog',
-      icon: <Book className="size-4 text-chart-3" />,
-      action: 'Update Log',
-    },
+    ...docTasks,
     {
       id: 'release',
       title: release?.ready ? 'Release Ready' : 'Prepare Release',
@@ -77,7 +90,7 @@ export default function MaintenanceQueue({
     },
   ];
 
-  const taskCount = maintenanceTasks.filter((t) => !isEmpty).length;
+  const taskCount = isEmpty ? 0 : maintenanceTasks.length;
 
   return (
     <Card className="glass-panel glass-panel-hover border-0">
@@ -85,7 +98,7 @@ export default function MaintenanceQueue({
         <SectionHeader
           icon={<Wrench className="size-4" />}
           title="AI Maintenance Queue"
-          description="README, CHANGELOG, Release tasks"
+          description="Documentation and release tasks"
           action={
             taskCount > 0 ? (
               <Badge variant="outline" className="border-white/[0.08] bg-secondary/50 tabular-nums">
@@ -99,7 +112,7 @@ export default function MaintenanceQueue({
       <CardContent>
         {isLoading ? (
           <MaintenanceQueueSkeleton />
-        ) : isEmpty ? (
+        ) : isEmpty || maintenanceTasks.length === 0 ? (
           <DashboardEmptyState />
         ) : (
           <div className="space-y-2.5">
@@ -118,10 +131,7 @@ export default function MaintenanceQueue({
                       <h3 className="text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
                         {task.title}
                       </h3>
-                      <Badge
-                        variant="secondary"
-                        className="shrink-0 text-xs capitalize"
-                      >
+                      <Badge variant="secondary" className="shrink-0 text-xs capitalize">
                         {task.type}
                       </Badge>
                     </div>
@@ -130,7 +140,7 @@ export default function MaintenanceQueue({
                     </p>
                   </div>
 
-                  {task.action && (
+                  {task.action && task.actionCallback ? (
                     <Button
                       variant="ghost"
                       size="icon-sm"
@@ -139,7 +149,7 @@ export default function MaintenanceQueue({
                     >
                       <ArrowRight className="size-4" />
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ))}
