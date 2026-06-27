@@ -2,11 +2,6 @@
 
 import { Search, Settings, MoreVertical, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ClientSessionUser } from '@/lib/auth';
-
-interface WorkspaceProps {
-  user: ClientSessionUser;
-}
 
 function MaintenanceInbox() {
   const tasks = [
@@ -129,7 +124,7 @@ function AIBriefing() {
   );
 }
 
-export default function Workspace({ user }: WorkspaceProps) {
+export default function Workspace() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}

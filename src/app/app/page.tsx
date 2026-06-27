@@ -10,5 +10,5 @@ export default async function AppPage() {
     redirect(getLoginUrl("/app"));
   }
 
-  return <Workspace user={session.user} />;
+  return <Workspace />;
 }
