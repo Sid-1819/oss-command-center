@@ -1,7 +1,9 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { getLoginUrl } from '@/lib/auth';
 
 export default function CTA() {
+  const loginUrl = getLoginUrl();
   return (
     <section className="relative py-20 px-6">
       <div className="max-w-4xl mx-auto">
@@ -19,7 +21,7 @@ export default function CTA() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/app" className="inline-flex items-center justify-center px-8 py-3 bg-accent-primary text-black font-semibold rounded-lg hover:bg-accent-primary/90 transition-all hover:gap-2 group">
+            <Link href={loginUrl} className="inline-flex items-center justify-center px-8 py-3 bg-accent-primary text-black font-semibold rounded-lg hover:bg-accent-primary/90 transition-all hover:gap-2 group">
               Get started free
               <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all" />
             </Link>

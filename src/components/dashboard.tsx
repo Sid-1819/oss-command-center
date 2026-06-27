@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import { analyzeRepositoryDashboard } from '@/actions/analyzeRepositoryDashboard';
 import Header from '@/components/header';
@@ -15,6 +16,11 @@ import { Spinner } from '@/components/ui/spinner';
 import { friendlyErrorMessage } from '@/types/dashboard-analysis';
 import type { DashboardAnalysisResult } from '@/types/dashboard-analysis';
 import type { ClientSessionUser } from '@/lib/auth';
+import { clearPlanReview } from '@/lib/readme/plan-review-storage';
+import {
+  README_PLAN_CONTEXT_KEY,
+  type ReadmePlanContext,
+} from '@/types/readme-plan-review';
 
 interface DashboardProps {
   user: ClientSessionUser | null;
@@ -31,6 +37,7 @@ function formatElapsed(seconds: number): string {
 }
 
 export default function Dashboard({ user }: DashboardProps) {
+  const router = useRouter();
   const [repositoryRef, setRepositoryRef] = useState('');
   const [result, setResult] = useState<DashboardAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -86,6 +93,28 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const analysis = hasSuccessfulResult ? result.analysis : undefined;
   const briefing = hasSuccessfulResult ? result.briefing : undefined;
+
+  function handleUpdateReadme(suggestion: string) {
+    if (!hasSuccessfulResult) {
+      return;
+    }
+
+    clearPlanReview();
+
+    const context: ReadmePlanContext = {
+      repositoryRef: result.repositoryRef,
+      suggestion,
+      analysis: result.analysis,
+      briefing: result.briefing,
+      analyzedAt: result.analyzedAt,
+    };
+
+    sessionStorage.setItem(README_PLAN_CONTEXT_KEY, JSON.stringify(context));
+
+    router.push(
+      `/app/readme?repo=${encodeURIComponent(result.repositoryRef)}&suggestion=${encodeURIComponent(suggestion)}`,
+    );
+  }
 
   return (
     <div className="min-h-screen text-foreground">
@@ -161,6 +190,7 @@ export default function Dashboard({ user }: DashboardProps) {
             documentation={briefing?.documentation}
             isLoading={isAnalyzing}
             isEmpty={isEmpty}
+            onUpdateReadme={hasSuccessfulResult ? handleUpdateReadme : undefined}
           />
           <ContributorOpportunities
             opportunities={briefing?.contributorOpportunities}

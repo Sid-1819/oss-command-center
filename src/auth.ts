@@ -1,24 +1,51 @@
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthConfig } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
+import { authorizeDevToken, isDevTokenLoginAvailable } from "@/lib/auth/dev-credentials";
+
+const providers: NonNullable<NextAuthConfig["providers"]> = [
+  GitHub({
+    clientId: process.env.AUTH_GITHUB_ID,
+    clientSecret: process.env.AUTH_GITHUB_SECRET,
+    authorization: {
+      params: {
+        scope: "read:user repo",
+      },
+    },
+  }),
+];
+
+if (isDevTokenLoginAvailable()) {
+  providers.push(
+    Credentials({
+      id: "dev-token",
+      name: "Dev Token",
+      credentials: {},
+      authorize: authorizeDevToken,
+    }),
+  );
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [
-    GitHub({
-      clientId: process.env.AUTH_GITHUB_ID,
-      clientSecret: process.env.AUTH_GITHUB_SECRET,
-      authorization: {
-        params: {
-          scope: "read:user repo",
-        },
-      },
-    }),
-  ],
+  providers,
   session: {
     strategy: "jwt",
   },
   trustHost: true,
   callbacks: {
-    jwt({ token, account, profile }) {
+    jwt({ token, account, profile, user }) {
+      if (user) {
+        token.sub = user.id;
+
+        if ("username" in user && typeof user.username === "string") {
+          token.username = user.username;
+        }
+
+        if ("accessToken" in user && typeof user.accessToken === "string") {
+          token.accessToken = user.accessToken;
+        }
+      }
+
       if (account?.access_token) {
         token.accessToken = account.access_token;
       }

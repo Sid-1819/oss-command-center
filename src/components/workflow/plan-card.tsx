@@ -7,9 +7,10 @@ import type { MaintenanceAction } from '@/types/execution-workflow';
 
 interface PlanCardProps {
   action: MaintenanceAction;
+  stepCount?: number;
 }
 
-export function PlanCard({ action }: PlanCardProps) {
+export function PlanCard({ action, stepCount }: PlanCardProps) {
   const typeIcons: Record<string, string> = {
     documentation: '📄',
     cleanup: '🧹',
@@ -37,6 +38,11 @@ export function PlanCard({ action }: PlanCardProps) {
             </div>
             <CardTitle className="text-lg">{action.title}</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">{action.description}</p>
+            {stepCount !== undefined ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {stepCount} planned step{stepCount === 1 ? '' : 's'}
+              </p>
+            ) : null}
           </div>
         </div>
       </CardHeader>

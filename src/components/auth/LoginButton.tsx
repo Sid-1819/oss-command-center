@@ -1,9 +1,14 @@
 import { signInWithGitHub } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
+import { APP_PATH } from "@/lib/auth";
 
-export default function LoginButton() {
+interface LoginButtonProps {
+  callbackUrl?: string;
+}
+
+export default function LoginButton({ callbackUrl = APP_PATH }: LoginButtonProps) {
   return (
-    <form action={signInWithGitHub}>
+    <form action={signInWithGitHub.bind(null, callbackUrl)}>
       <Button
         type="submit"
         size="sm"

@@ -1,7 +1,9 @@
 import { ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { getLoginUrl } from '@/lib/auth';
 
 export default function Hero() {
+  const loginUrl = getLoginUrl();
   return (
     <section className="relative min-h-screen pt-32 pb-20 px-6 overflow-hidden">
       {/* Background glow */}
@@ -33,7 +35,7 @@ export default function Hero() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-          <Link href="/app" className="inline-flex items-center justify-center px-6 py-3 bg-accent-primary text-black font-semibold rounded-lg hover:bg-accent-primary/90 transition-all hover:gap-2 group">
+          <Link href={loginUrl} className="inline-flex items-center justify-center px-6 py-3 bg-accent-primary text-black font-semibold rounded-lg hover:bg-accent-primary/90 transition-all hover:gap-2 group">
             Start free
             <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all" />
           </Link>

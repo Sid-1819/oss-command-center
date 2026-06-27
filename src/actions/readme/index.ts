@@ -68,6 +68,8 @@ export async function runReadmeAction(
 }
 
 export { DEFAULT_README_FIXTURE } from "./types";
+export { executeReadmeAction } from "./executeReadmeAction";
+export { planReadmeAction } from "./planReadmeAction";
 export type {
   ReadmeActionInput,
   ReadmeActionReport,

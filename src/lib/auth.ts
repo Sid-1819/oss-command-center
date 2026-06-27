@@ -1,6 +1,13 @@
 import type { Session } from "next-auth";
 import { auth } from "@/auth";
 
+export const APP_PATH = "/app";
+export const LOGIN_PATH = "/login";
+
+export function getLoginUrl(callbackUrl: string = APP_PATH): string {
+  return `${LOGIN_PATH}?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+}
+
 export class AuthError extends Error {
   readonly code: "EXPIRED_SESSION";
 

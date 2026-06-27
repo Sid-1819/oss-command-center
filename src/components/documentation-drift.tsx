@@ -14,6 +14,7 @@ import type { MaintainerBriefing } from '@/types/maintainer-briefing';
 
 interface DocumentationDriftProps extends DashboardSectionStateProps {
   documentation?: MaintainerBriefing['documentation'];
+  onUpdateReadme?: (suggestion: string) => void;
 }
 
 function DocumentationDriftSkeleton() {
@@ -30,8 +31,10 @@ export default function DocumentationDrift({
   documentation,
   isLoading,
   isEmpty,
+  onUpdateReadme,
 }: DocumentationDriftProps) {
   const suggestions = documentation?.suggestions ?? [];
+  const canUpdate = Boolean(onUpdateReadme) && !isLoading && !isEmpty;
 
   return (
     <Card className="glass-panel glass-panel-hover border-0">
@@ -75,9 +78,12 @@ export default function DocumentationDrift({
                   </div>
                   <Button
                     variant="ghost"
-                    size="icon-sm"
-                    className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                    size="sm"
+                    disabled={!canUpdate}
+                    onClick={() => onUpdateReadme?.(suggestion)}
+                    className="shrink-0 gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                   >
+                    Update README
                     <ArrowRight className="size-4" />
                   </Button>
                 </div>
