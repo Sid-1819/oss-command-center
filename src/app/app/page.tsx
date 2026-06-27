@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import DashboardShell from "@/components/dashboard-shell";
 import { getLoginUrl } from "@/lib/auth";
+import Workspace from "@/components/workspace";
 
 export default async function AppPage() {
   const session = await auth();
@@ -10,5 +10,5 @@ export default async function AppPage() {
     redirect(getLoginUrl("/app"));
   }
 
-  return <DashboardShell />;
+  return <Workspace />;
 }
