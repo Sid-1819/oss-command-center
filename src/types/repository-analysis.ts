@@ -33,6 +33,7 @@ export type AnalyzeRepositoryErrorCode =
   | "FORBIDDEN"
   | "RATE_LIMIT"
   | "VALIDATION"
+  | "UNAUTHORIZED"
   | "UNKNOWN";
 
 export class AnalyzeRepositoryError extends Error {

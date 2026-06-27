@@ -1,12 +1,14 @@
 "use server";
 
 import {
+  createOctokit,
   getOpenIssueCount,
   getOpenIssues,
   getOpenPullRequestCount,
   getOpenPullRequests,
   getRepository,
 } from "@/lib/github";
+import { getGitHubAccessToken } from "@/lib/auth";
 import {
   AnalyzeRepositoryError,
   type AnalyzeRepositoryErrorCode,
@@ -22,6 +24,8 @@ type GitHubIssue = Awaited<ReturnType<typeof getOpenIssues>>[number];
 
 function mapStatusToCode(status: number): AnalyzeRepositoryErrorCode {
   switch (status) {
+    case 401:
+      return "UNAUTHORIZED";
     case 404:
       return "NOT_FOUND";
     case 403:
@@ -51,6 +55,7 @@ function toAnalyzeRepositoryError(
       FORBIDDEN: `Access denied for repository ${repositoryRef}`,
       RATE_LIMIT: "GitHub API rate limit exceeded",
       VALIDATION: "Invalid repository parameters",
+      UNAUTHORIZED: "Sign in with GitHub to analyze repositories",
       UNKNOWN: `Failed to analyze repository ${repositoryRef}`,
     };
 
@@ -121,14 +126,26 @@ export async function analyzeRepository(
     );
   }
 
+  const accessToken = await getGitHubAccessToken();
+
+  if (!accessToken) {
+    throw new AnalyzeRepositoryError(
+      "Sign in with GitHub to analyze repositories",
+      "UNAUTHORIZED",
+      401,
+    );
+  }
+
+  const octokit = createOctokit(accessToken);
+
   try {
     const [repository, pullRequests, issues, openIssueCount, openPullRequestCount] =
       await Promise.all([
-        getRepository(normalizedOwner, normalizedRepo),
-        getOpenPullRequests(normalizedOwner, normalizedRepo),
-        getOpenIssues(normalizedOwner, normalizedRepo),
-        getOpenIssueCount(normalizedOwner, normalizedRepo),
-        getOpenPullRequestCount(normalizedOwner, normalizedRepo),
+        getRepository(normalizedOwner, normalizedRepo, octokit),
+        getOpenPullRequests(normalizedOwner, normalizedRepo, octokit),
+        getOpenIssues(normalizedOwner, normalizedRepo, octokit),
+        getOpenIssueCount(normalizedOwner, normalizedRepo, octokit),
+        getOpenPullRequestCount(normalizedOwner, normalizedRepo, octokit),
       ]);
 
     return normalizeRepositoryAnalysis(

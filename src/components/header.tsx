@@ -1,12 +1,16 @@
 'use client';
 
 import { GitBranch, Sparkles } from 'lucide-react';
+import LoginButton from '@/components/auth/LoginButton';
+import UserMenu from '@/components/auth/UserMenu';
+import RepositoryPicker from '@/components/repository-picker';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import type { ClientSessionUser } from '@/lib/auth';
 
 interface HeaderProps {
+  user: ClientSessionUser | null;
   repositoryRef: string;
   onRepositoryRefChange: (value: string) => void;
   onAnalyze: () => void;
@@ -15,13 +19,16 @@ interface HeaderProps {
 }
 
 export default function Header({
+  user,
   repositoryRef = '',
   onRepositoryRefChange,
   onAnalyze,
   isAnalyzing,
   activeRepository,
 }: HeaderProps) {
-  const canAnalyze = repositoryRef.trim().length > 0 && !isAnalyzing;
+  const isLoggedIn = user !== null;
+  const canAnalyze =
+    isLoggedIn && repositoryRef.trim().length > 0 && !isAnalyzing;
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-background/70 backdrop-blur-xl">
@@ -44,22 +51,19 @@ export default function Header({
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-center px-2 md:max-w-md">
-          <Input
-            value={repositoryRef}
-            onChange={(event) => onRepositoryRefChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && canAnalyze) {
-                onAnalyze();
-              }
-            }}
-            placeholder="owner/repository"
-            disabled={isAnalyzing}
-            aria-label="Repository"
-            className="h-8 border-white/[0.08] bg-secondary/50 font-mono text-xs placeholder:font-sans"
-          />
+          {isLoggedIn ? (
+            <RepositoryPicker
+              value={repositoryRef}
+              onSelect={onRepositoryRefChange}
+              disabled={isAnalyzing}
+            />
+          ) : (
+            <LoginButton />
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {isLoggedIn && user ? <UserMenu user={user} /> : null}
           {activeRepository && (
             <Badge
               variant="outline"

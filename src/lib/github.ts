@@ -2,9 +2,11 @@ import type { RestEndpointMethodTypes } from "@octokit/plugin-rest-endpoint-meth
 import { Octokit } from "octokit";
 import { GITHUB_LIST_LIMIT } from "@/lib/github-limits";
 
-export const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
-});
+export function createOctokit(auth?: string): Octokit {
+  return new Octokit({
+    auth: auth ?? process.env.GITHUB_TOKEN,
+  });
+}
 
 type GitHubRepository =
   RestEndpointMethodTypes["repos"]["get"]["response"]["data"];
@@ -16,6 +18,7 @@ type GitHubIssue =
 export async function getRepository(
   owner: string,
   repo: string,
+  octokit: Octokit = createOctokit(),
 ): Promise<GitHubRepository> {
   const { data } = await octokit.rest.repos.get({ owner, repo });
   return data;
@@ -24,6 +27,7 @@ export async function getRepository(
 export async function getOpenPullRequests(
   owner: string,
   repo: string,
+  octokit: Octokit = createOctokit(),
 ): Promise<GitHubPullRequest[]> {
   const { data } = await octokit.rest.pulls.list({
     owner,
@@ -40,6 +44,7 @@ export async function getOpenPullRequests(
 export async function getOpenIssues(
   owner: string,
   repo: string,
+  octokit: Octokit = createOctokit(),
 ): Promise<GitHubIssue[]> {
   const { data } = await octokit.rest.issues.listForRepo({
     owner,
@@ -56,6 +61,7 @@ export async function getOpenIssues(
 export async function getOpenIssueCount(
   owner: string,
   repo: string,
+  octokit: Octokit = createOctokit(),
 ): Promise<number> {
   const { data } = await octokit.rest.search.issuesAndPullRequests({
     q: `repo:${owner}/${repo} is:issue is:open`,
@@ -68,6 +74,7 @@ export async function getOpenIssueCount(
 export async function getOpenPullRequestCount(
   owner: string,
   repo: string,
+  octokit: Octokit = createOctokit(),
 ): Promise<number> {
   const { data } = await octokit.rest.search.issuesAndPullRequests({
     q: `repo:${owner}/${repo} is:pr is:open`,

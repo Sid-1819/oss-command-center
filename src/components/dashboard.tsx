@@ -14,6 +14,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
 import { friendlyErrorMessage } from '@/types/dashboard-analysis';
 import type { DashboardAnalysisResult } from '@/types/dashboard-analysis';
+import type { ClientSessionUser } from '@/lib/auth';
+
+interface DashboardProps {
+  user: ClientSessionUser | null;
+}
 
 function formatElapsed(seconds: number): string {
   if (seconds < 60) {
@@ -25,7 +30,7 @@ function formatElapsed(seconds: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-export default function Dashboard() {
+export default function Dashboard({ user }: DashboardProps) {
   const [repositoryRef, setRepositoryRef] = useState('');
   const [result, setResult] = useState<DashboardAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -85,6 +90,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen text-foreground">
       <Header
+        user={user}
         repositoryRef={repositoryRef}
         onRepositoryRefChange={setRepositoryRef}
         onAnalyze={handleAnalyze}
