@@ -49,13 +49,13 @@ export default function MaintenanceQueue({
     {
       id: 'readme',
       title: 'README Needs Update',
-      description: documentation?.suggestion ?? 'Update documentation to reflect latest changes',
+      description: documentation?.suggestions?.[0] ?? 'Update documentation to reflect latest changes',
       type: 'readme',
       icon: <FileText className="size-4 text-chart-2" />,
       action: 'Review & Update',
       actionCallback: () => {
-        if (documentation?.suggestion && onUpdateReadme) {
-          onUpdateReadme(documentation.suggestion);
+        if (documentation?.suggestions?.[0] && onUpdateReadme) {
+          onUpdateReadme(documentation.suggestions[0]);
         }
       },
     },
