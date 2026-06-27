@@ -11,6 +11,9 @@ import ReleaseAssistant from '@/components/release-assistant';
 import DocumentationDrift from '@/components/documentation-drift';
 import ContributorOpportunities from '@/components/contributor-opportunities';
 import RepositoryHealth from '@/components/repository-health';
+import MergeQueue from '@/components/merge-queue';
+import MaintenanceQueue from '@/components/maintenance-queue';
+import SecurityOverview from '@/components/security-overview';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
 import { friendlyErrorMessage } from '@/types/dashboard-analysis';
@@ -152,6 +155,7 @@ export default function Dashboard({ user }: DashboardProps) {
       )}
 
       <main className="mx-auto w-full max-w-7xl px-6 py-10">
+        {/* Maintainer Briefing - Hero Section */}
         <section className="mb-8">
           <MaintainerBriefing
             briefing={briefing}
@@ -161,21 +165,50 @@ export default function Dashboard({ user }: DashboardProps) {
           />
         </section>
 
+        {/* Primary Action Row - Today's Inbox & Merge Queue */}
         <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <div className="space-y-5 lg:col-span-2">
+          <div className="lg:col-span-2">
             <TodaysPriorities
               priorities={briefing?.priorities}
               isLoading={isAnalyzing}
               isEmpty={isEmpty}
             />
+          </div>
+          <div>
+            <MergeQueue
+              pullRequests={analysis?.repository.openPullRequests ?? 0}
+              isLoading={isAnalyzing}
+              isEmpty={isEmpty}
+            />
+          </div>
+        </div>
+
+        {/* Secondary Row - Maintenance & Security */}
+        <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <MaintenanceQueue
+            release={briefing?.release}
+            documentation={briefing?.documentation}
+            isLoading={isAnalyzing}
+            isEmpty={isEmpty}
+            onUpdateReadme={hasSuccessfulResult ? handleUpdateReadme : undefined}
+          />
+          <SecurityOverview
+            analysis={analysis}
+            isLoading={isAnalyzing}
+            isEmpty={isEmpty}
+          />
+        </div>
+
+        {/* Tertiary Row - Release & Repository Health */}
+        <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <div className="lg:col-span-2">
             <ReleaseAssistant
               release={briefing?.release}
               isLoading={isAnalyzing}
               isEmpty={isEmpty}
             />
           </div>
-
-          <div className="space-y-5">
+          <div>
             <RepositoryHealth
               analysis={analysis}
               briefing={briefing}
@@ -185,13 +218,8 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <DocumentationDrift
-            documentation={briefing?.documentation}
-            isLoading={isAnalyzing}
-            isEmpty={isEmpty}
-            onUpdateReadme={hasSuccessfulResult ? handleUpdateReadme : undefined}
-          />
+        {/* Bottom Row - Contributor Opportunities */}
+        <div className="grid grid-cols-1 gap-5">
           <ContributorOpportunities
             opportunities={briefing?.contributorOpportunities}
             issues={analysis?.issues}
