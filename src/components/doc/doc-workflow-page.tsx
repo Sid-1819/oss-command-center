@@ -39,6 +39,7 @@ import {
 import { toExecutionResult } from '@/lib/actions/to-execution-result';
 import { toDocMaintenanceAction } from '@/lib/actions/to-maintenance-action';
 import { getEffectiveAiConfig, isAiConfigReady } from '@/lib/ai/client-settings';
+import { getDashboardHref } from '@/lib/dashboard-href';
 import {
   isWorkflowStateError,
   workflowStateErrorMessage,
@@ -47,6 +48,7 @@ import {
   loadDocPlanContext,
   saveDocPlanContext,
 } from '@/lib/workflow-state/context-storage';
+import { syncDashboardSessionAfterMerge } from '@/lib/workflow-state/dashboard-session-storage';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import type { ExecutionResult, MaintenanceAction } from '@/types/execution-workflow';
 import type { DocPlanContext, DocPlanReview } from '@/types/doc-plan-review';
@@ -440,6 +442,42 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
     async (actionRun: ActionRun) => {
       const context = await loadDocPlanContext();
 
+      const syncMergedAnalysis = async (completion: ActionRunCompletion) => {
+        if (!completion.analysis || !completion.briefing) {
+          return;
+        }
+
+        await syncDashboardSessionAfterMerge({
+          repositoryRef: actionRun.repositoryRef,
+          analysis: completion.analysis,
+          briefing: completion.briefing,
+          demoMode,
+        });
+
+        const docSuggestion = completion.nextActions.find(
+          (item) =>
+            item.executable &&
+            item.actionType === 'markdown-doc' &&
+            item.payload?.targetFile === targetFile,
+        );
+
+        const storedContext = context ?? (await loadDocPlanContext());
+        if (storedContext && storedContext.repositoryRef === actionRun.repositoryRef) {
+          const nextContext: DocPlanContext = {
+            ...storedContext,
+            targetFile,
+            suggestion:
+              docSuggestion?.payload?.suggestion ?? planReview?.suggestion ?? suggestion,
+            analysis: completion.analysis,
+            briefing: completion.briefing,
+            analyzedAt: new Date().toISOString(),
+          };
+
+          await saveDocPlanContext(nextContext);
+          setDocContext(nextContext);
+        }
+      };
+
       if (demoMode && context) {
         const completion = buildDemoRefreshCompletion({
           analysis: context.analysis,
@@ -448,6 +486,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
         const completedRun = buildDemoCompletedActionRun(actionRun);
 
         await saveActionRun(completedRun, completion);
+        await syncMergedAnalysis(completion);
         setRestoredActionRun(completedRun);
         setRestoredCompletion(completion);
         setRestoredExecutionResult(buildRestoredExecutionResult(completedRun));
@@ -460,25 +499,8 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
 
       await saveActionRun(refreshed.actionRun, refreshed.completion);
 
-      if (refreshed.completion?.analysis && refreshed.completion.briefing) {
-        const docSuggestion = refreshed.completion.nextActions.find(
-          (item) =>
-            item.executable &&
-            item.actionType === 'markdown-doc' &&
-            item.payload?.targetFile === targetFile,
-        );
-
-        const nextContext: DocPlanContext = {
-          repositoryRef: actionRun.repositoryRef,
-          targetFile,
-          suggestion:
-            docSuggestion?.payload?.suggestion ?? planReview?.suggestion ?? suggestion,
-          analysis: refreshed.completion.analysis,
-          briefing: refreshed.completion.briefing,
-          analyzedAt: new Date().toISOString(),
-        };
-
-        await saveDocPlanContext(nextContext);
+      if (refreshed.completion) {
+        await syncMergedAnalysis(refreshed.completion);
       }
 
       setRestoredActionRun(refreshed.actionRun);
@@ -526,13 +548,14 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
 
   const showLanding =
     !isInitializing && !isPlanning && !planReview && docContext && !errorMessage;
+  const backToDashboardHref = getDashboardHref(repo, { demoMode });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="mb-8">
           <Button asChild variant="ghost" size="sm" className="mb-4 gap-2">
-            <Link href="/app">
+            <Link href={backToDashboardHref}>
               <ArrowLeft className="size-4" />
               Back to dashboard
             </Link>
@@ -630,6 +653,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
               onRefreshStatus={handleRefreshStatus}
               onExecuteDocSuggestion={(file, sugg) => handleExecuteDocSuggestion(file, sugg)}
               previousHealthScore={previousHealthScore}
+              backToDashboardHref={backToDashboardHref}
             />
           </div>
         ) : null}

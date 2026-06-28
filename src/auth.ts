@@ -54,6 +54,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.username = profile.login;
       }
 
+      if (account?.provider === "dev-token") {
+        token.authProvider = "dev-token";
+      } else if (account?.provider === "github") {
+        token.authProvider = "github";
+      }
+
       return token;
     },
     session({ session, token }) {
@@ -68,6 +74,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (typeof token.accessToken === "string") {
         session.accessToken = token.accessToken;
       }
+
+      session.authProvider =
+        token.authProvider === "dev-token" ? "dev-token" : "github";
 
       return session;
     },

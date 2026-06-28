@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { auth } from "@/auth";
 import Dashboard from "@/components/dashboard";
+import { AiLoadingPanel } from "@/components/ai-loading-panel";
 import { toClientSession } from "@/lib/auth";
 
 interface DemoDashboardShellProps {
@@ -13,6 +15,14 @@ export default async function DemoDashboardShell({
   const user = toClientSession(session);
 
   return (
-    <Dashboard user={user} initialRepositoryRef={repositoryRef} demoMode />
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center px-6">
+          <AiLoadingPanel message="Loading demo…" className="w-full max-w-md" />
+        </div>
+      }
+    >
+      <Dashboard user={user} initialRepositoryRef={repositoryRef} demoMode />
+    </Suspense>
   );
 }

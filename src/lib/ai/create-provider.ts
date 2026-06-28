@@ -1,17 +1,14 @@
-import { AiConfigError, type AiProvider, type AiRequestConfig } from "@/lib/ai/types";
+import { AiConfigError, type AiProvider, type AiRequestConfig, type ByokProviderId } from "@/lib/ai/types";
 import { createMockProvider } from "@/lib/ai/providers/mock";
 import { createByokLanguageModel } from "@/lib/ai/providers/create-language-model";
 import { generateObject } from "ai";
 
-function createByokProvider(
-  id: "gemini" | "openrouter",
-  config: AiRequestConfig,
-): AiProvider {
+function createByokProvider(id: ByokProviderId, config: AiRequestConfig): AiProvider {
   const apiKey = config.apiKey?.trim();
 
   if (!apiKey) {
     throw new AiConfigError(
-      `${id} API key is required. Add it in AI settings.`,
+      "Add your provider API key in MaintainerOS AI settings.",
       "MISSING_API_KEY",
       400,
     );
@@ -40,17 +37,21 @@ export function createAiProvider(config: AiRequestConfig): AiProvider {
       return createMockProvider();
     case "auto":
       throw new AiConfigError(
-        "Server chain mode should use generateStructuredObject directly.",
+        "Hosted MaintainerOS AI should use generateStructuredObject directly.",
         "PROVIDER_NOT_IMPLEMENTED",
         501,
       );
     case "gemini":
-      return createByokProvider("gemini", config);
     case "openrouter":
-      return createByokProvider("openrouter", config);
+    case "openai":
+    case "anthropic":
+    case "mistral":
+    case "groq":
+    case "xai":
+      return createByokProvider(config.provider, config);
     default:
       throw new AiConfigError(
-        "Unsupported AI provider.",
+        "Unsupported MaintainerOS AI provider.",
         "PROVIDER_NOT_IMPLEMENTED",
         501,
       );

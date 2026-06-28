@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import { analyzeRepositoryDashboard } from '@/actions/analyzeRepositoryDashboard';
 import { fetchRepositoryAnalysisAction } from '@/actions/fetchRepositoryAnalysis';
@@ -33,8 +33,13 @@ import {
   saveDocPlanContext,
   saveIssuePlanContext,
 } from '@/lib/workflow-state/context-storage';
+import {
+  loadDashboardSession,
+  saveDashboardSession,
+} from '@/lib/workflow-state/dashboard-session-storage';
+import { getDashboardHref } from '@/lib/dashboard-href';
 import { friendlyErrorMessage } from '@/types/dashboard-analysis';
-import type { DashboardAnalysisResult, DashboardErrorCode } from '@/types/dashboard-analysis';
+import type { DashboardAnalysisResult, DashboardErrorCode, DashboardSession } from '@/types/dashboard-analysis';
 import type { ClientSessionUser } from '@/lib/auth';
 import AutoFixCandidates from '@/components/auto-fix-candidates';
 import { normalizeBriefing } from '@/lib/maintainer-briefing-utils';
@@ -59,18 +64,34 @@ export default function Dashboard({
   demoMode = false,
 }: DashboardProps) {
   const router = useRouter();
-  const [repositoryRef, setRepositoryRef] = useState(initialRepositoryRef);
+  const searchParams = useSearchParams();
+  const repoFromUrl = searchParams.get('repo')?.trim() ?? '';
+  const [repositoryRef, setRepositoryRef] = useState(
+    initialRepositoryRef || repoFromUrl,
+  );
   const [result, setResult] = useState<DashboardAnalysisResult | null>(null);
+  const [isRestoringSession, setIsRestoringSession] = useState(user !== null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [aiConfig, setAiConfig] = useState(getEffectiveAiConfig());
   const [showSettingsPrompt, setShowSettingsPrompt] = useState(false);
-  const [forceRefresh, setForceRefresh] = useState(false);
   const [workflowError, setWorkflowError] = useState<string | null>(null);
   const pendingAnalysisRef = useRef<{
     analysis: RepositoryAnalysis;
     repositoryRef: string;
   } | null>(null);
+
+  const persistDashboardSession = useCallback(
+    async (session: DashboardSession) => {
+      try {
+        await saveDashboardSession(session);
+        router.replace(getDashboardHref(session.repositoryRef, { demoMode }), { scroll: false });
+      } catch {
+        // Keep the dashboard usable even if persistence fails.
+      }
+    },
+    [demoMode, router],
+  );
 
   const { submit: submitBriefing, object: streamingBriefing } = useAiStream({
     api: '/api/ai/maintainer-briefing',
@@ -99,16 +120,20 @@ export default function Dashboard({
 
       const briefing = normalizeBriefing(object);
 
-      setResult({
+      const nextResult: DashboardAnalysisResult = {
         success: true,
         analysis: trimAnalysisForClient(pending.analysis, briefing),
         briefing,
         analyzedAt: new Date().toISOString(),
         repositoryRef: pending.repositoryRef,
-      });
-      setForceRefresh(false);
+      };
+
+      setResult(nextResult);
       pendingAnalysisRef.current = null;
       setIsAnalyzing(false);
+      if (nextResult.success) {
+        await persistDashboardSession({ ...nextResult, demoMode });
+      }
     },
     onError: (error) => {
       setResult({
@@ -128,7 +153,7 @@ export default function Dashboard({
   const hasError = result?.success === false;
   const trimmedRef = repositoryRef.trim();
 
-  const phase: DashboardPhase = isAnalyzing
+  const phase: DashboardPhase = isRestoringSession || isAnalyzing
     ? 'loading'
     : hasSuccessfulResult
       ? 'success'
@@ -144,6 +169,55 @@ export default function Dashboard({
     user !== null && trimmedRef.length > 0 && !isAnalyzing;
 
   const { recentRepos, recordRecent } = useRecentRepositories(user?.id);
+
+  useEffect(() => {
+    if (!user) {
+      setIsRestoringSession(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function restoreSession() {
+      setIsRestoringSession(true);
+
+      try {
+        const session = await loadDashboardSession();
+        if (cancelled || !session) {
+          return;
+        }
+
+        if (!!session.demoMode !== demoMode) {
+          return;
+        }
+
+        if (repoFromUrl && repoFromUrl !== session.repositoryRef) {
+          return;
+        }
+
+        setRepositoryRef(session.repositoryRef);
+        setResult({
+          success: true,
+          analysis: session.analysis,
+          briefing: session.briefing,
+          analyzedAt: session.analyzedAt,
+          repositoryRef: session.repositoryRef,
+        });
+      } catch {
+        // Fall back to the repo picker when session restore fails.
+      } finally {
+        if (!cancelled) {
+          setIsRestoringSession(false);
+        }
+      }
+    }
+
+    void restoreSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [demoMode, repoFromUrl, user]);
 
   useEffect(() => {
     if (!hasSuccessfulResult || !user?.id) {
@@ -174,7 +248,7 @@ export default function Dashboard({
     setShowSettingsPrompt(false);
   }, []);
 
-  async function handleAnalyze(options?: { refresh?: boolean }) {
+  async function handleAnalyze() {
     const trimmedRef = repositoryRef.trim();
 
     if (!trimmedRef || isAnalyzing) {
@@ -195,12 +269,14 @@ export default function Dashboard({
         const nextResult = await analyzeRepositoryDashboard({
           repositoryRef: trimmedRef,
           aiConfig: { provider: 'mock' },
-          forceRefresh: options?.refresh ?? forceRefresh,
+          forceRefresh: true,
           demoMode: true,
         });
         setResult(nextResult);
-        setForceRefresh(false);
         setIsAnalyzing(false);
+        if (nextResult.success) {
+          await persistDashboardSession({ ...nextResult, demoMode });
+        }
         return;
       }
 
@@ -226,7 +302,7 @@ export default function Dashboard({
       submitBriefing({
         analysis: fetchResult.analysis,
         aiConfig,
-        forceRefresh: options?.refresh ?? forceRefresh,
+        forceRefresh: true,
       });
     } catch {
       setResult({
@@ -297,7 +373,7 @@ export default function Dashboard({
       await saveIssuePlanContext(context);
 
       router.push(
-        `/app/issue?repo=${encodeURIComponent(result.repositoryRef)}&issue=${encodeURIComponent(String(issueNumber))}${demoMode ? '&demo=1' : ''}`,
+        `/app/issue?repo=${encodeURIComponent(result.repositoryRef)}&issue=${encodeURIComponent(String(issueNumber))}${demoMode ? '&demo=1' : ''}&analyze=1`,
       );
     } catch (error) {
       setWorkflowError(
@@ -351,7 +427,8 @@ export default function Dashboard({
             <AlertTitle>AI provider required</AlertTitle>
             <AlertDescription className="flex flex-wrap items-center gap-2">
               <span>
-                Choose Mock mode for free local testing, use Server AI, or paste your own API key.
+                Choose MaintainerOS AI for analysis. In local development you can switch to demo
+                fixtures or your own provider key in settings.
               </span>
               <AiSettingsSheet onSaved={handleAiConfigSaved} />
             </AlertDescription>
@@ -369,18 +446,20 @@ export default function Dashboard({
         </div>
       )}
 
-      {isAnalyzing ? (
+      {isRestoringSession || isAnalyzing ? (
         <div className="mx-auto w-full max-w-7xl px-6 pt-4">
           <AiLoadingPanel
             message={
-              demoMode
-                ? 'Loading demo briefing…'
-                : 'Fetching GitHub data and generating AI briefing…'
+              isRestoringSession
+                ? 'Restoring your workspace…'
+                : demoMode
+                  ? 'Loading demo briefing…'
+                  : 'Fetching GitHub data and generating AI briefing…'
             }
-            elapsedSeconds={elapsedSeconds}
+            elapsedSeconds={isAnalyzing ? elapsedSeconds : undefined}
             compact
             streamingSummary={
-              typeof streamingBriefing?.summary === 'string'
+              isAnalyzing && typeof streamingBriefing?.summary === 'string'
                 ? streamingBriefing.summary
                 : undefined
             }
@@ -393,13 +472,10 @@ export default function Dashboard({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setForceRefresh(true);
-              void handleAnalyze({ refresh: true });
-            }}
+            onClick={() => void handleAnalyze()}
             disabled={isAnalyzing}
           >
-            Re-analyze (bypass cache)
+            Re-analyze
           </Button>
         </div>
       ) : null}
@@ -433,6 +509,7 @@ export default function Dashboard({
           <div className="lg:col-span-2">
             <TodaysPriorities
               priorities={briefing?.priorities}
+              repository={analysis?.repository}
               isLoading={isAnalyzing}
               isEmpty={false}
             />
@@ -485,6 +562,7 @@ export default function Dashboard({
           <ContributorOpportunities
             opportunities={briefing?.contributorOpportunities}
             issues={analysis?.issues}
+            repository={analysis?.repository}
             isLoading={isAnalyzing}
             isEmpty={false}
           />

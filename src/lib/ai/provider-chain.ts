@@ -1,7 +1,6 @@
 import type { LanguageModel } from "ai";
 import {
   createByokLanguageModel,
-  createLanguageModel,
   getServerProviderChain,
   type LanguageModelSpec,
 } from "@/lib/ai/providers/create-language-model";
@@ -12,7 +11,7 @@ import {
 import {
   AiConfigError,
   type AiOperation,
-  type ChainProviderId,
+  type ByokProviderId,
   type ResolvedAiConfig,
 } from "@/lib/ai/types";
 
@@ -35,13 +34,9 @@ export function resolveModelTargets(
   if (config.mode === "byok") {
     const provider = config.provider;
 
-    if (
-      !provider ||
-      !config.apiKey ||
-      (provider !== "gemini" && provider !== "openrouter")
-    ) {
+    if (!provider || !config.apiKey) {
       throw new AiConfigError(
-        "Unsupported BYOK provider.",
+        "Unsupported MaintainerOS AI provider configuration.",
         "PROVIDER_NOT_IMPLEMENTED",
         501,
       );
@@ -81,13 +76,9 @@ export function toLanguageModel(
   spec: LanguageModelSpec,
   modelOverride?: string,
 ): LanguageModel {
-  if (spec.model) {
-    return createLanguageModel(spec, modelOverride);
-  }
-
-  return createByokLanguageModel(spec.provider, spec.apiKey, modelOverride);
+  return createByokLanguageModel(spec.provider, spec.apiKey, modelOverride || spec.model);
 }
 
-export function providerLabel(provider: ChainProviderId): string {
+export function providerLabel(provider: ByokProviderId): string {
   return provider;
 }

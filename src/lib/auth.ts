@@ -24,6 +24,11 @@ export interface ClientSessionUser {
   email: string | null | undefined;
   image: string | null | undefined;
   username: string;
+  canAnalyzeAnyRepository: boolean;
+}
+
+export function isDevTokenSession(session: Session | null): boolean {
+  return session?.authProvider === "dev-token";
 }
 
 export async function getSession() {
@@ -68,5 +73,6 @@ export function toClientSession(session: Session | null): ClientSessionUser | nu
     email: session.user.email,
     image: session.user.image,
     username: session.user.username,
+    canAnalyzeAnyRepository: session.authProvider === "dev-token",
   };
 }

@@ -1,6 +1,16 @@
 "use client";
 
-import type { AiProviderId, AiRequestConfig } from "@/lib/ai/types";
+import {
+  AI_PROVIDER_OPTIONS,
+  getAiProviderOption,
+  getDefaultByokProvider,
+  isByokProvider,
+  isDevDemoProvider,
+  isHostedProvider,
+  isLocalDevAiTestingEnabled,
+  maintainerOsAiLabel,
+} from "@/lib/ai/provider-catalog";
+import type { AiProviderId, AiRequestConfig, ByokProviderId } from "@/lib/ai/types";
 
 export const AI_CONFIG_STORAGE_KEY = "maintaineros:ai-config";
 
@@ -8,12 +18,9 @@ export interface StoredAiConfig extends AiRequestConfig {
   updatedAt: string;
 }
 
-const VALID_PROVIDERS = new Set<AiProviderId>([
-  "mock",
-  "auto",
-  "gemini",
-  "openrouter",
-]);
+const VALID_PROVIDERS = new Set<AiProviderId>(
+  AI_PROVIDER_OPTIONS.map((option) => option.id),
+);
 
 function normalizeProvider(provider: string): AiProviderId {
   if (VALID_PROVIDERS.has(provider as AiProviderId)) {
@@ -23,19 +30,12 @@ function normalizeProvider(provider: string): AiProviderId {
   return "auto";
 }
 
-function defaultProvider(): AiProviderId {
-  const envDefault = process.env.NEXT_PUBLIC_DEFAULT_AI_PROVIDER;
-
-  if (
-    envDefault === "mock" ||
-    envDefault === "auto" ||
-    envDefault === "gemini" ||
-    envDefault === "openrouter"
-  ) {
-    return envDefault;
+function defaultHostedProvider(): AiProviderId {
+  if (isLocalDevAiTestingEnabled() && !isServerAiConfigured()) {
+    return "mock";
   }
 
-  return "mock";
+  return "auto";
 }
 
 export function isServerAiConfigured(): boolean {
@@ -96,33 +96,36 @@ export function getEffectiveAiConfig(): AiRequestConfig {
     };
   }
 
-  if (isServerAiConfigured()) {
-    return { provider: "auto" };
-  }
-
-  return { provider: defaultProvider() };
+  return { provider: defaultHostedProvider() };
 }
 
 export function isAiConfigReady(config: AiRequestConfig = getEffectiveAiConfig()): boolean {
-  if (config.provider === "mock" || config.provider === "auto") {
+  if (isHostedProvider(config.provider) || isDevDemoProvider(config.provider)) {
     return true;
   }
 
-  return Boolean(config.apiKey?.trim());
+  if (isByokProvider(config.provider)) {
+    return Boolean(config.apiKey?.trim());
+  }
+
+  return true;
 }
 
 export function aiConfigLabel(config: AiRequestConfig = getEffectiveAiConfig()): string {
-  if (config.provider === "mock") {
-    return "Mock data";
-  }
-
-  if (config.provider === "auto") {
-    return isServerAiConfigured() ? "Server AI" : "Server AI (auto)";
-  }
-
-  if (!config.apiKey?.trim()) {
+  if (isByokProvider(config.provider) && !config.apiKey?.trim()) {
     return "API key required";
   }
 
-  return `${config.provider}${config.model ? ` · ${config.model}` : ""}`;
+  return maintainerOsAiLabel(config);
 }
+
+export function getDefaultModelForProviderOption(provider: AiProviderId): string | undefined {
+  return getAiProviderOption(provider)?.defaultModel;
+}
+
+export function usesOwnProviderKey(config: AiRequestConfig): boolean {
+  return isByokProvider(config.provider);
+}
+
+export { isLocalDevAiTestingEnabled, getDefaultByokProvider };
+export type { ByokProviderId };

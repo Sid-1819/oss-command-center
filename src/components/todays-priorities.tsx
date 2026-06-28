@@ -1,9 +1,8 @@
 'use client';
 
-import { AlertCircle, AlertOctagon, ArrowRight, ListTodo } from 'lucide-react';
+import { AlertCircle, AlertOctagon, ListTodo } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SectionHeader } from '@/components/section-header';
 import {
@@ -11,8 +10,14 @@ import {
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
 import { PreviewListDialog } from '@/components/preview-list-dialog';
+import { GitHubExternalLinkRow } from '@/components/github-external-link-row';
 import { cn } from '@/lib/utils';
+import {
+  parsePrimaryGitHubReference,
+  resolveGitHubUrl,
+} from '@/lib/github/links';
 import type { MaintainerBriefing } from '@/types/maintainer-briefing';
+import type { RepositoryAnalysis } from '@/types/repository-analysis';
 
 const priorityConfig = {
   high: {
@@ -37,6 +42,7 @@ const priorityConfig = {
 
 interface TodaysPrioritiesProps extends DashboardSectionStateProps {
   priorities?: MaintainerBriefing['priorities'];
+  repository?: RepositoryAnalysis['repository'];
 }
 
 function TodaysPrioritiesSkeleton() {
@@ -51,6 +57,7 @@ function TodaysPrioritiesSkeleton() {
 
 export default function TodaysPriorities({
   priorities = [],
+  repository,
   isLoading,
   isEmpty,
 }: TodaysPrioritiesProps) {
@@ -89,37 +96,48 @@ export default function TodaysPriorities({
             renderItem={(item, index) => {
               const config = priorityConfig[item.priority];
               const Icon = config.icon;
+              const reference = repository
+                ? parsePrimaryGitHubReference(item.title, item.reason)
+                : null;
+              const href =
+                repository && reference
+                  ? resolveGitHubUrl(repository.owner, repository.name, reference)
+                  : null;
+
+              const content = (
+                <>
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-white/[0.06]">
+                    <Icon className="size-4 text-muted-foreground" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex items-start justify-between gap-3">
+                      <h3 className="text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
+                        {item.title}
+                      </h3>
+                      <Badge variant={config.variant} className="shrink-0 capitalize">
+                        <span className={cn('mr-1 size-1.5 rounded-full', config.dot)} />
+                        {item.priority}
+                      </Badge>
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {item.reason}
+                    </p>
+                  </div>
+                </>
+              );
+
+              if (href) {
+                return (
+                  <GitHubExternalLinkRow href={href} className={cn('border-l-2', config.accent)}>
+                    {content}
+                  </GitHubExternalLinkRow>
+                );
+              }
 
               return (
-                <div className={cn('group list-item-interactive border-l-2', config.accent)}>
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-white/[0.06]">
-                      <Icon className="size-4 text-muted-foreground" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex items-start justify-between gap-3">
-                        <h3 className="text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
-                          {item.title}
-                        </h3>
-                        <Badge variant={config.variant} className="shrink-0 capitalize">
-                          <span className={cn('mr-1 size-1.5 rounded-full', config.dot)} />
-                          {item.priority}
-                        </Badge>
-                      </div>
-                      <p className="text-xs leading-relaxed text-muted-foreground">
-                        {item.reason}
-                      </p>
-                    </div>
-
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                    >
-                      <ArrowRight className="size-4" />
-                    </Button>
-                  </div>
+                <div className={cn('list-item-interactive border-l-2', config.accent)}>
+                  <div className="flex items-start gap-3">{content}</div>
                 </div>
               );
             }}

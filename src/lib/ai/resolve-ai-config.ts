@@ -1,7 +1,6 @@
+import { isByokProvider } from "@/lib/ai/provider-catalog";
 import { isServerChainConfigured } from "@/lib/ai/providers/create-language-model";
 import { AiConfigError, type AiRequestConfig, type ResolvedAiConfig } from "@/lib/ai/types";
-
-const BYOK_PROVIDERS = new Set(["gemini", "openrouter"]);
 
 export function resolveAiConfig(aiConfig?: AiRequestConfig): ResolvedAiConfig {
   if (aiConfig?.provider === "mock") {
@@ -18,16 +17,16 @@ export function resolveAiConfig(aiConfig?: AiRequestConfig): ResolvedAiConfig {
     }
 
     throw new AiConfigError(
-      "No server AI keys configured. Add keys to the environment or switch to Mock mode.",
+      "No hosted MaintainerOS AI keys configured. Use MaintainerOS AI · Demo or connect a compatible provider.",
       "MISSING_API_KEY",
       400,
     );
   }
 
-  if (aiConfig?.provider && BYOK_PROVIDERS.has(aiConfig.provider)) {
+  if (aiConfig?.provider && isByokProvider(aiConfig.provider)) {
     if (!aiConfig.apiKey?.trim()) {
       throw new AiConfigError(
-        "Add your API key in AI settings or switch to Mock mode for testing.",
+        "Select a compatible provider and add its API key, or use MaintainerOS AI (no key required).",
         "MISSING_API_KEY",
         400,
       );
@@ -50,7 +49,7 @@ export function resolveAiConfig(aiConfig?: AiRequestConfig): ResolvedAiConfig {
   }
 
   throw new AiConfigError(
-    "Configure an AI provider in settings (Mock mode works without a key).",
+    "Configure MaintainerOS AI in settings. Demo mode works without a key.",
     "MISSING_API_KEY",
     400,
   );

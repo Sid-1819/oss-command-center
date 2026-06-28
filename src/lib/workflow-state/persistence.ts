@@ -5,6 +5,7 @@ import type {
   IssuePlanContext,
 } from "@/types/doc-plan-review";
 import type { ActionRun, ActionRunCompletion } from "@/types/action-run";
+import type { DashboardSession } from "@/types/dashboard-analysis";
 import {
   getActionRunTtlMs,
   getPlanReviewTtlMs,
@@ -107,6 +108,53 @@ export async function deleteWorkflowContext(
       where: { userId_kind: { userId, kind } },
     })
     .catch(() => undefined);
+}
+
+export async function upsertDashboardSession(
+  userId: string,
+  session: DashboardSession,
+): Promise<void> {
+  const prisma = await getPrisma();
+  const expiresAt = new Date(Date.now() + getWorkflowContextTtlMs());
+
+  await prisma.workflowContext.upsert({
+    where: {
+      userId_kind: { userId, kind: "dashboard" },
+    },
+    create: {
+      userId,
+      kind: "dashboard",
+      repositoryRef: session.repositoryRef,
+      payloadJson: session as object,
+      expiresAt,
+    },
+    update: {
+      repositoryRef: session.repositoryRef,
+      payloadJson: session as object,
+      expiresAt,
+    },
+  });
+}
+
+export async function getDashboardSession(userId: string): Promise<DashboardSession | null> {
+  const prisma = await getPrisma();
+
+  const row = await prisma.workflowContext.findUnique({
+    where: { userId_kind: { userId, kind: "dashboard" } },
+  });
+
+  if (!row) {
+    return null;
+  }
+
+  if (isExpired(row.expiresAt)) {
+    await prisma.workflowContext
+      .delete({ where: { id: row.id } })
+      .catch(() => undefined);
+    return null;
+  }
+
+  return row.payloadJson as unknown as DashboardSession;
 }
 
 interface DocPlanReviewLookup {

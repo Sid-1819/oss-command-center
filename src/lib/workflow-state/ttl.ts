@@ -1,4 +1,4 @@
-export type WorkflowStateKind = "doc" | "issue";
+export type WorkflowStateKind = "doc" | "issue" | "dashboard";
 
 export function getWorkflowContextTtlMs(): number {
   const hours = Number(process.env.WORKFLOW_CONTEXT_TTL_HOURS ?? 24);

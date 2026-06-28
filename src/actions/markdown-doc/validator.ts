@@ -5,11 +5,9 @@ import {
   markdownDocExecutionPlanSchema,
   type MarkdownDocExecutionPlan,
 } from "./types";
+import { findOutOfScopeEditTarget } from "./scope-utils";
 
 const MAX_STEP_CONTENT_LENGTH = 8 * 1024;
-
-const OTHER_FILE_PATTERN =
-  /\b(?:LICENSE(?:\.md)?)\b|\b(?!README|CHANGELOG|CONTRIBUTING)[A-Z0-9_/-]+\.(?:md|txt|json|ya?ml|toml)\b/i;
 
 export const markdownDocValidator: Validator<MarkdownDocExecutionPlan> = {
   validate(plan) {
@@ -77,18 +75,14 @@ export const markdownDocValidator: Validator<MarkdownDocExecutionPlan> = {
         });
       }
 
-      const referencesOtherFile =
-        OTHER_FILE_PATTERN.test(step.content) ||
-        OTHER_FILE_PATTERN.test(step.rationale);
+      const outOfScopeEditTarget =
+        findOutOfScopeEditTarget(step.content, plan.targetFile) ??
+        findOutOfScopeEditTarget(step.rationale, plan.targetFile);
 
-      if (
-        referencesOtherFile &&
-        !step.content.includes(plan.targetFile) &&
-        !step.rationale.includes(plan.targetFile)
-      ) {
+      if (outOfScopeEditTarget) {
         issues.push({
           code: "SCOPE_VIOLATION",
-          message: `Step ${index + 1} references files outside ${plan.targetFile} scope.`,
+          message: `Step ${index + 1} proposes editing ${outOfScopeEditTarget}, but only ${plan.targetFile} may be modified.`,
           path: `steps[${index}]`,
         });
       }

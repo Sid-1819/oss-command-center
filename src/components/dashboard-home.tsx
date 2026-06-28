@@ -68,6 +68,7 @@ export default function DashboardHome({
           value={repositoryRef}
           onSelect={onRepositoryRefChange}
           disabled={isAnalyzing || demoMode}
+          allowAnyRepository={user.canAnalyzeAnyRepository}
         />
 
         {isReady ? (

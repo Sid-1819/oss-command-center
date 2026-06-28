@@ -4,14 +4,20 @@ import {
   getCachedResponse,
   setCachedResponse,
 } from "@/lib/ai/cache";
+import { AI_PROVIDER_OPTIONS } from "@/lib/ai/provider-catalog";
 import { cachedObjectResponse, streamObjectWithFallback } from "@/lib/ai/stream-with-fallback";
 import { resolveAiConfig } from "@/lib/ai/resolve-ai-config";
 import { AuthError, requireSession } from "@/lib/auth";
 import type { AiOperation, AiRequestConfig, ProviderAttemptResult } from "@/lib/ai/types";
 
+const aiProviderIds = AI_PROVIDER_OPTIONS.map((option) => option.id) as [
+  (typeof AI_PROVIDER_OPTIONS)[number]["id"],
+  ...(typeof AI_PROVIDER_OPTIONS)[number]["id"][],
+];
+
 const aiConfigSchema = z
   .object({
-    provider: z.enum(["mock", "auto", "gemini", "openrouter"]),
+    provider: z.enum(aiProviderIds),
     apiKey: z.string().optional(),
     model: z.string().optional(),
   })

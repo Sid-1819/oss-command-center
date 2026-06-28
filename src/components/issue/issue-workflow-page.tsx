@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
+import { getDashboardHref } from '@/lib/dashboard-href';
 import { refreshActionRunStatus } from '@/actions/action-run';
 import { executeIssueFixAction } from '@/actions/issue-fix/executeIssueFixAction';
 import { finalizeIssueFixPlanAction } from '@/actions/issue-fix/finalizeIssueFixPlanAction';
@@ -44,7 +45,11 @@ import {
   isWorkflowStateError,
   workflowStateErrorMessage,
 } from '@/lib/workflow-state/errors';
-import { loadIssuePlanContext } from '@/lib/workflow-state/context-storage';
+import {
+  loadIssuePlanContext,
+  saveIssuePlanContext,
+} from '@/lib/workflow-state/context-storage';
+import { syncDashboardSessionAfterMerge } from '@/lib/workflow-state/dashboard-session-storage';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import type { ExecutionResult, MaintenanceAction } from '@/types/execution-workflow';
 import type { IssueFixPlanReview, IssuePlanContext } from '@/types/doc-plan-review';
@@ -102,6 +107,7 @@ export default function IssueWorkflowPage() {
   const prepareContextRef = useRef<Extract<PrepareIssueFixPlanResult, { success: true }> | null>(
     null,
   );
+  const autoAnalyzeAttemptedRef = useRef(false);
 
   const { submit: submitPlan, object: streamingPlan } = useAiStream({
     api: '/api/ai/issue-fix-plan',
@@ -232,6 +238,10 @@ export default function IssueWorkflowPage() {
       setAction(null);
       setPlanReview(null);
       setIssueContext(null);
+      setRestoredActionRun(null);
+      setRestoredCompletion(null);
+      setRestoredExecutionResult(null);
+      autoAnalyzeAttemptedRef.current = false;
 
       if (!repo || !Number.isFinite(issueNumber)) {
         setErrorMessage('Missing repository or issue number.');
@@ -345,6 +355,32 @@ export default function IssueWorkflowPage() {
     }
   }, [demoMode, issueContext, issueNumber, repo, submitPlan]);
 
+  useEffect(() => {
+    if (searchParams.get('analyze') !== '1') return;
+    if (autoAnalyzeAttemptedRef.current) return;
+    if (isInitializing || isPlanning || !issueContext || planReview || errorMessage) return;
+    if (!canStartAnalysis) return;
+
+    autoAnalyzeAttemptedRef.current = true;
+
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('analyze');
+    const query = params.toString();
+    router.replace(query ? `/app/issue?${query}` : '/app/issue');
+
+    void handleStartAnalysis();
+  }, [
+    canStartAnalysis,
+    errorMessage,
+    handleStartAnalysis,
+    isInitializing,
+    isPlanning,
+    issueContext,
+    planReview,
+    router,
+    searchParams,
+  ]);
+
   const handleReAnalyze = useCallback(() => {
     void (async () => {
       try {
@@ -393,6 +429,35 @@ export default function IssueWorkflowPage() {
   const handleRefreshStatus = useCallback(async (actionRun: ActionRun) => {
     const context = await loadIssuePlanContext();
 
+    const syncMergedAnalysis = async (completion: ActionRunCompletion) => {
+      if (!completion.analysis || !completion.briefing) {
+        return;
+      }
+
+      await syncDashboardSessionAfterMerge({
+        repositoryRef: actionRun.repositoryRef,
+        analysis: completion.analysis,
+        briefing: completion.briefing,
+        demoMode,
+      });
+
+      const storedContext = context ?? (await loadIssuePlanContext());
+      if (storedContext && storedContext.repositoryRef === actionRun.repositoryRef) {
+        await saveIssuePlanContext({
+          ...storedContext,
+          analysis: completion.analysis,
+          briefing: completion.briefing,
+          analyzedAt: new Date().toISOString(),
+        });
+        setIssueContext({
+          ...storedContext,
+          analysis: completion.analysis,
+          briefing: completion.briefing,
+          analyzedAt: new Date().toISOString(),
+        });
+      }
+    };
+
     if (demoMode && context) {
       const completion = buildDemoRefreshCompletion({
         analysis: context.analysis,
@@ -401,6 +466,7 @@ export default function IssueWorkflowPage() {
       const completedRun = buildDemoCompletedActionRun(actionRun);
 
       await saveActionRun(completedRun, completion);
+      await syncMergedAnalysis(completion);
       setRestoredActionRun(completedRun);
       setRestoredCompletion(completion);
       setRestoredExecutionResult(buildRestoredExecutionResult(completedRun));
@@ -411,6 +477,9 @@ export default function IssueWorkflowPage() {
     const refreshed = await refreshActionRunStatus(actionRun);
     if (!refreshed.success) throw new Error(refreshed.error.message);
     await saveActionRun(refreshed.actionRun, refreshed.completion);
+    if (refreshed.completion) {
+      await syncMergedAnalysis(refreshed.completion);
+    }
     setRestoredActionRun(refreshed.actionRun);
     setRestoredCompletion(refreshed.completion ?? null);
     setRestoredExecutionResult(buildRestoredExecutionResult(refreshed.actionRun));
@@ -419,21 +488,47 @@ export default function IssueWorkflowPage() {
 
   const handleFixIssue = useCallback(
     (num: number) => {
-      router.push(
-        `/app/issue?repo=${encodeURIComponent(repo)}&issue=${encodeURIComponent(String(num))}`,
-      );
+      void (async () => {
+        try {
+          const context = issueContext ?? (await loadIssuePlanContext());
+          if (!context || context.repositoryRef !== repo) {
+            setErrorMessage(
+              'Analysis context unavailable. Refresh after merge or analyze again.',
+            );
+            return;
+          }
+
+          await clearIssuePlanReview();
+          await saveIssuePlanContext({ ...context, issueNumber: num });
+
+          setRestoredActionRun(null);
+          setRestoredCompletion(null);
+          setRestoredExecutionResult(null);
+          setPlanReview(null);
+          setAction(null);
+          setIssueContext({ ...context, issueNumber: num });
+          setErrorMessage(null);
+
+          router.push(
+            `/app/issue?repo=${encodeURIComponent(repo)}&issue=${encodeURIComponent(String(num))}${demoMode ? '&demo=1' : ''}&analyze=1`,
+          );
+        } catch (error) {
+          setErrorMessage(workflowErrorMessage(error, 'Failed to start next issue fix.'));
+        }
+      })();
     },
-    [repo, router],
+    [demoMode, issueContext, repo, router],
   );
 
   const showLanding =
     !isInitializing && !isPlanning && !planReview && issueContext && !errorMessage;
+  const backToDashboardHref = getDashboardHref(repo, { demoMode });
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-4xl px-6 py-8">
         <Button asChild variant="ghost" size="sm" className="mb-4 gap-2">
-          <Link href="/app">
+          <Link href={backToDashboardHref}>
             <ArrowLeft className="size-4" />
             Back to dashboard
           </Link>
@@ -549,6 +644,7 @@ export default function IssueWorkflowPage() {
               onRefreshStatus={handleRefreshStatus}
               onFixIssue={handleFixIssue}
               previousHealthScore={previousHealthScore}
+              backToDashboardHref={backToDashboardHref}
             />
           </div>
         ) : null}

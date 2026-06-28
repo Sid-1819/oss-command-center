@@ -10,6 +10,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
 interface RepositoryOption {
@@ -21,18 +22,24 @@ interface RepositoryPickerProps {
   value: string;
   onSelect: (fullName: string) => void;
   disabled?: boolean;
+  allowAnyRepository?: boolean;
 }
 
 export default function RepositoryPicker({
   value,
   onSelect,
   disabled = false,
+  allowAnyRepository = false,
 }: RepositoryPickerProps) {
   const [items, setItems] = useState<RepositoryOption[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!allowAnyRepository);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    if (allowAnyRepository) {
+      return;
+    }
+
     let isCancelled = false;
 
     async function loadRepositories() {
@@ -64,7 +71,24 @@ export default function RepositoryPicker({
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [allowAnyRepository]);
+
+  if (allowAnyRepository) {
+    return (
+      <div className="space-y-1.5">
+        <Input
+          value={value}
+          onChange={(event) => onSelect(event.target.value)}
+          disabled={disabled}
+          placeholder="owner/repo or github.com/owner/repo"
+          className="h-8 w-full max-w-md border-white/[0.08] bg-secondary/50 font-mono text-xs placeholder:font-sans"
+        />
+        <p className="text-center text-[11px] text-muted-foreground">
+          Dev login can analyze any public GitHub repository.
+        </p>
+      </div>
+    );
+  }
 
   const selectedItem =
     items.find((item) => item.value === value) ??

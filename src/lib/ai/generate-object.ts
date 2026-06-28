@@ -21,7 +21,7 @@ import {
   AiConfigError,
   type AiOperation,
   type AiRequestConfig,
-  type ChainProviderId,
+  type ByokProviderId,
   type ProviderAttemptResult,
 } from "@/lib/ai/types";
 
@@ -49,7 +49,7 @@ export interface GenerateObjectResult<T> {
 }
 
 function resolveModelId(
-  provider: ChainProviderId,
+  provider: ByokProviderId,
   operation: AiOperation,
   override?: string,
   specModel?: string,

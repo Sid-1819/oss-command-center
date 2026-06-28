@@ -25,7 +25,7 @@ export function buildMarkdownDocSystemInstruction(targetFile: string): string {
 Your job is to produce a structured execution plan that addresses a specific documentation suggestion.
 
 Rules:
-1. Only plan changes to ${targetFile}. Never reference or modify other files.
+1. Only plan insert/replace/append operations on ${targetFile}. You may mention other repository files for context or documentation, but never plan edits to other files.
 2. Each step must use one of: insert, replace, or append.
 3. Use section headings as anchors when inserting or replacing content.
 4. ${fileGuidance(targetFile)}

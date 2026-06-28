@@ -39,6 +39,7 @@ interface ExecutionWorkflowProps {
   onExecuteDocSuggestion?: (targetFile: string, suggestion: string) => void;
   onFixIssue?: (issueNumber: number) => void;
   previousHealthScore?: number;
+  backToDashboardHref?: string;
 }
 
 export function ExecutionWorkflow({
@@ -55,6 +56,7 @@ export function ExecutionWorkflow({
   onExecuteDocSuggestion,
   onFixIssue,
   previousHealthScore,
+  backToDashboardHref = '/app',
 }: ExecutionWorkflowProps) {
   const [status, setStatus] = useState<MaintenanceAction['status']>(() =>
     initialActionRun && initialExecutionResult ? 'complete' : action.status,
@@ -266,7 +268,7 @@ export function ExecutionWorkflow({
                 </div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button asChild variant="outline" className="flex-1">
-                    <Link href="/app">Back to dashboard</Link>
+                    <Link href={backToDashboardHref}>Back to dashboard</Link>
                   </Button>
                   <Button
                     className="flex-1"
@@ -316,6 +318,7 @@ export function ExecutionWorkflow({
             onExecuteDocSuggestion={onExecuteDocSuggestion}
             onFixIssue={onFixIssue}
             previousHealthScore={previousHealthScore}
+            backToDashboardHref={backToDashboardHref}
           />
         )}
       </div>

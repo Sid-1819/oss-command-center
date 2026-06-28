@@ -1,5 +1,5 @@
 import { APICallError } from "ai";
-import type { ChainProviderId } from "@/lib/ai/types";
+import type { ByokProviderId } from "@/lib/ai/types";
 
 export type ProviderErrorCode = "RATE_LIMIT" | "AI_ERROR";
 
@@ -10,9 +10,14 @@ export interface ProviderErrorInfo {
   retryAfterSeconds?: number;
 }
 
-const PROVIDER_LABELS: Record<ChainProviderId, string> = {
-  gemini: "Gemini",
+const PROVIDER_LABELS: Record<ByokProviderId, string> = {
+  gemini: "Google Gemini",
   openrouter: "OpenRouter",
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  mistral: "Mistral",
+  groq: "Groq",
+  xai: "xAI",
 };
 
 function extractErrorText(rawMessage: string): string {
@@ -48,7 +53,7 @@ function isDailyQuotaExceeded(message: string): boolean {
 }
 
 export function formatRateLimitMessage(
-  provider: ChainProviderId,
+  provider: ByokProviderId,
   rawMessage: string,
 ): string {
   const label = PROVIDER_LABELS[provider];
@@ -70,7 +75,7 @@ export function formatRateLimitMessage(
 }
 
 export function getProviderErrorInfo(
-  provider: ChainProviderId,
+  provider: ByokProviderId,
   error: APICallError,
 ): ProviderErrorInfo {
   const message = extractErrorText(error.message || "AI request failed.");
@@ -118,7 +123,7 @@ export function mapProviderError(error: unknown): ProviderErrorInfo | null {
 
 export function logProviderAttempt(
   operation: string,
-  provider: ChainProviderId,
+  provider: ByokProviderId,
   attempt: number,
   reason: string,
 ): void {

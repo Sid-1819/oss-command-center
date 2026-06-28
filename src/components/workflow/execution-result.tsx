@@ -22,6 +22,7 @@ interface ExecutionResultProps {
   onExecuteDocSuggestion?: (targetFile: string, suggestion: string) => void;
   onFixIssue?: (issueNumber: number) => void;
   previousHealthScore?: number;
+  backToDashboardHref?: string;
 }
 
 function formatDate(iso?: string): string {
@@ -43,6 +44,7 @@ export function ExecutionResult({
   onExecuteDocSuggestion,
   onFixIssue,
   previousHealthScore,
+  backToDashboardHref = '/app',
 }: ExecutionResultProps) {
   const isSuccess = result.status === 'success';
   const isAwaitingReview = actionRun?.status === 'AWAITING_REVIEW';
@@ -350,7 +352,7 @@ export function ExecutionResult({
         <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border/30">
           {isClosed ? (
             <Button asChild variant="outline" className="col-span-2 w-full">
-              <Link href="/app">Back to dashboard</Link>
+              <Link href={backToDashboardHref}>Back to dashboard</Link>
             </Button>
           ) : (
             <>
@@ -358,7 +360,7 @@ export function ExecutionResult({
                 Review Again
               </Button>
               <Button asChild className="w-full">
-                <Link href="/app">Back to dashboard</Link>
+                <Link href={backToDashboardHref}>Back to dashboard</Link>
               </Button>
             </>
           )}

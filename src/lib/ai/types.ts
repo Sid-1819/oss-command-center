@@ -3,8 +3,16 @@ import type { z } from "zod";
 export type AiProviderId =
   | "mock"
   | "auto"
+  | ByokProviderId;
+
+export type ByokProviderId =
   | "gemini"
-  | "openrouter";
+  | "openrouter"
+  | "openai"
+  | "anthropic"
+  | "mistral"
+  | "groq"
+  | "xai";
 
 export type AiExecutionMode = "mock" | "byok" | "chain";
 
@@ -23,7 +31,7 @@ export interface AiRequestConfig {
 
 export interface ResolvedAiConfig {
   mode: AiExecutionMode;
-  provider?: Exclude<AiProviderId, "mock" | "auto">;
+  provider?: ByokProviderId;
   apiKey?: string;
   model?: string;
 }
@@ -42,7 +50,7 @@ export interface AiProvider {
 }
 
 export interface ProviderAttemptResult {
-  provider: ChainProviderId;
+  provider: ByokProviderId;
   model: string;
   usedFallback: boolean;
   attempt: number;
@@ -69,10 +77,12 @@ export class AiConfigError extends Error {
   }
 }
 
-export const DEFAULT_MODELS: Record<
-  Exclude<AiProviderId, "mock" | "auto">,
-  string
-> = {
+export const DEFAULT_MODELS: Record<ByokProviderId, string> = {
   gemini: "gemini-2.5-flash",
   openrouter: "openrouter/free",
+  openai: "gpt-4o-mini",
+  anthropic: "claude-3-5-haiku-latest",
+  mistral: "mistral-small-latest",
+  groq: "llama-3.3-70b-versatile",
+  xai: "grok-2-1212",
 };

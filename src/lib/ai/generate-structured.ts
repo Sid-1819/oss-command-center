@@ -5,13 +5,13 @@ import {
 } from "@/lib/ai/cache";
 import { generateStructuredObject } from "@/lib/ai/generate-object";
 import { resolveAiConfig, toAiRequestConfig } from "@/lib/ai/resolve-ai-config";
+import { isByokProvider } from "@/lib/ai/provider-catalog";
 import {
-  getPrimaryGeminiModel,
+  getDefaultModelForProvider,
   getTaskTypeForOperation,
 } from "@/lib/ai/router";
 import {
   AiConfigError,
-  DEFAULT_MODELS,
   type AiOperation,
   type AiRequestConfig,
   type StructuredJsonRequest,
@@ -22,17 +22,14 @@ function resolveModel(aiConfig: AiRequestConfig, operation: AiOperation): string
     return aiConfig.model.trim();
   }
 
-  const taskType = getTaskTypeForOperation(operation);
-
-  if (aiConfig.provider === "gemini") {
-    return getPrimaryGeminiModel(taskType);
+  if (isByokProvider(aiConfig.provider)) {
+    return getDefaultModelForProvider(
+      aiConfig.provider,
+      getTaskTypeForOperation(operation),
+    );
   }
 
-  if (aiConfig.provider === "openrouter") {
-    return DEFAULT_MODELS.openrouter;
-  }
-
-  return getPrimaryGeminiModel(taskType);
+  return getDefaultModelForProvider("gemini", getTaskTypeForOperation(operation));
 }
 
 export interface GenerateStructuredJsonOptions<T = unknown> {

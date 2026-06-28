@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { KeyRound, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
+import {
+  BYOK_PROVIDER_OPTIONS,
+  DEV_DEMO_PROVIDER_OPTION,
+  HOSTED_PROVIDER_OPTION,
+  getDefaultByokProvider,
+} from "@/lib/ai/provider-catalog";
 import {
   aiConfigLabel,
+  getDefaultModelForProviderOption,
   getEffectiveAiConfig,
-  isServerAiConfigured,
+  isLocalDevAiTestingEnabled,
   loadAiConfig,
   saveAiConfig,
+  usesOwnProviderKey,
+  type ByokProviderId,
   type StoredAiConfig,
 } from "@/lib/ai/client-settings";
 import type { AiProviderId } from "@/lib/ai/types";
@@ -31,41 +40,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
-const PROVIDER_OPTIONS: {
-  id: AiProviderId;
-  label: string;
-  docsUrl?: string;
-  requiresKey: boolean;
-}[] = [
-  {
-    id: "mock",
-    label: "Mock (no API key)",
-    requiresKey: false,
-  },
-  {
-    id: "auto",
-    label: "Server AI (automatic failover)",
-    requiresKey: false,
-  },
-  {
-    id: "gemini",
-    label: "Google Gemini (BYOK)",
-    docsUrl: "https://ai.google.dev/gemini-api/docs/api-key",
-    requiresKey: true,
-  },
-  {
-    id: "openrouter",
-    label: "OpenRouter (BYOK)",
-    docsUrl: "https://openrouter.ai/keys",
-    requiresKey: true,
-  },
-];
-
-const MODEL_PLACEHOLDERS: Partial<Record<AiProviderId, string>> = {
-  gemini: "gemini-2.5-flash",
-  openrouter: "openrouter/free",
-};
+import { Switch } from "@/components/ui/switch";
 
 interface AiSettingsSheetProps {
   onSaved?: (config: StoredAiConfig) => void;
@@ -73,41 +48,61 @@ interface AiSettingsSheetProps {
 
 export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
   const [open, setOpen] = useState(false);
-  const [provider, setProvider] = useState<AiProviderId>("mock");
+  const [useOwnKey, setUseOwnKey] = useState(false);
+  const [hostedSource, setHostedSource] = useState<AiProviderId>("auto");
+  const [byokProvider, setByokProvider] = useState<ByokProviderId>(getDefaultByokProvider());
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
-  const [statusLabel, setStatusLabel] = useState("Mock data");
+  const [statusLabel, setStatusLabel] = useState("MaintainerOS AI");
+
+  const showDevOptions = isLocalDevAiTestingEnabled();
 
   useEffect(() => {
     const config = getEffectiveAiConfig();
-    setProvider(config.provider);
+    const ownKey = usesOwnProviderKey(config);
+
+    setUseOwnKey(ownKey);
+
+    if (ownKey && config.provider !== "auto" && config.provider !== "mock") {
+      setByokProvider(config.provider as ByokProviderId);
+    } else {
+      setHostedSource(config.provider === "mock" ? "mock" : "auto");
+    }
+
     setApiKey(config.apiKey ?? "");
     setModel(config.model ?? "");
     setStatusLabel(aiConfigLabel(config));
   }, [open]);
 
   function handleSave() {
-    const stored = saveAiConfig({
-      provider,
-      apiKey: apiKey.trim() || undefined,
-      model: model.trim() || undefined,
-    });
+    let stored: StoredAiConfig;
+
+    if (useOwnKey) {
+      stored = saveAiConfig({
+        provider: byokProvider,
+        apiKey: apiKey.trim() || undefined,
+        model: model.trim() || undefined,
+      });
+    } else {
+      stored = saveAiConfig({
+        provider: hostedSource,
+        model: undefined,
+        apiKey: undefined,
+      });
+    }
 
     setStatusLabel(aiConfigLabel(stored));
     onSaved?.(stored);
     setOpen(false);
   }
 
-  const selectedProvider = PROVIDER_OPTIONS.find((option) => option.id === provider);
-  const showKeyFields = provider !== "mock" && provider !== "auto";
-
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <KeyRound className="size-3.5" />
-          AI
-          <Badge variant="secondary" className="ml-0.5 hidden sm:inline-flex">
+          <Sparkles className="size-3.5" />
+          MaintainerOS AI
+          <Badge variant="secondary" className="ml-0.5 hidden max-w-40 truncate sm:inline-flex">
             {statusLabel}
           </Badge>
         </Button>
@@ -116,57 +111,101 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="size-4 text-primary" />
-            AI settings
+            MaintainerOS AI
           </SheetTitle>
           <SheetDescription>
-            By default, hosted deployments use server-side keys with automatic
-            Gemini → OpenRouter failover. Override with your own key below.
+            Production uses hosted MaintainerOS AI with free Gemini and OpenRouter models — no
+            setup required. Switch to your own provider only if you want to bring an API key.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-5 px-4 py-2">
-          {isServerAiConfigured() ? (
-            <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
-              Server AI is configured. Select &quot;Server AI&quot; to use automatic
-              provider failover, or pick a BYOK provider to override.
-            </p>
+          {!useOwnKey ? (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+              <p className="text-sm font-medium text-foreground">MaintainerOS AI</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {HOSTED_PROVIDER_OPTION.description}
+              </p>
+            </div>
           ) : null}
 
-          <div className="space-y-2">
-            <Label htmlFor="ai-provider">Provider</Label>
-            <Select
-              value={provider}
-              onValueChange={(value) => setProvider(value as AiProviderId)}
-            >
-              <SelectTrigger id="ai-provider" className="w-full">
-                <SelectValue placeholder="Select provider" />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDER_OPTIONS.map((option) => (
-                  <SelectItem key={option.id} value={option.id}>
-                    {option.label}
+          {showDevOptions && !useOwnKey ? (
+            <div className="space-y-2">
+              <Label htmlFor="ai-dev-source">Local development</Label>
+              <Select
+                value={hostedSource}
+                onValueChange={(value) => setHostedSource(value as AiProviderId)}
+              >
+                <SelectTrigger id="ai-dev-source" className="w-full">
+                  <SelectValue placeholder="Select development mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={HOSTED_PROVIDER_OPTION.id}>
+                    {HOSTED_PROVIDER_OPTION.label}
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  <SelectItem value={DEV_DEMO_PROVIDER_OPTION.id}>
+                    {DEV_DEMO_PROVIDER_OPTION.label}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {hostedSource === "mock"
+                  ? DEV_DEMO_PROVIDER_OPTION.description
+                  : "Use hosted models while developing locally (requires server API keys)."}
+              </p>
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border/40 p-4">
+            <div className="space-y-1">
+              <Label htmlFor="ai-use-own-key" className="text-sm font-medium">
+                Use my own provider
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Optional. Connect OpenAI, Anthropic, Gemini, Groq, or another supported provider
+                with your API key.
+              </p>
+            </div>
+            <Switch
+              id="ai-use-own-key"
+              checked={useOwnKey}
+              onCheckedChange={(checked) => {
+                setUseOwnKey(checked);
+                if (checked) {
+                  setByokProvider(getDefaultByokProvider());
+                }
+              }}
+            />
           </div>
 
-          {provider === "auto" ? (
-            <p className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-sm text-muted-foreground">
-              Uses server environment keys with automatic failover: Gemini 2.5 Flash
-              → OpenRouter free.
-            </p>
-          ) : null}
-
-          {showKeyFields ? (
+          {useOwnKey ? (
             <>
+              <div className="space-y-2">
+                <Label htmlFor="ai-byok-provider">Provider</Label>
+                <Select
+                  value={byokProvider}
+                  onValueChange={(value) => setByokProvider(value as ByokProviderId)}
+                >
+                  <SelectTrigger id="ai-byok-provider" className="w-full">
+                    <SelectValue placeholder="Select provider" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BYOK_PROVIDER_OPTIONS.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="ai-api-key">API key</Label>
                 <Input
                   id="ai-api-key"
                   type="password"
                   autoComplete="off"
-                  placeholder="Paste your API key"
+                  placeholder="Paste your provider API key"
                   value={apiKey}
                   onChange={(event) => setApiKey(event.target.value)}
                 />
@@ -176,34 +215,14 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
                 <Label htmlFor="ai-model">Model override (optional)</Label>
                 <Input
                   id="ai-model"
-                  placeholder={MODEL_PLACEHOLDERS[provider] ?? "Default model"}
+                  placeholder={
+                    getDefaultModelForProviderOption(byokProvider) ?? "Default model for provider"
+                  }
                   value={model}
                   onChange={(event) => setModel(event.target.value)}
                 />
               </div>
-
-              {selectedProvider?.docsUrl ? (
-                <p className="text-xs text-muted-foreground">
-                  Get a key from{" "}
-                  <a
-                    href={selectedProvider.docsUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-primary underline-offset-2 hover:underline"
-                  >
-                    {selectedProvider.label.replace(" (BYOK)", "")}
-                  </a>
-                  .
-                </p>
-              ) : null}
             </>
-          ) : null}
-
-          {provider === "mock" ? (
-            <p className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-sm text-muted-foreground">
-              Mock mode returns fixture data for analysis, planning, and demo PR flows —
-              ideal for local development without spending API quota.
-            </p>
           ) : null}
         </div>
 

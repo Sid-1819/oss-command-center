@@ -20,14 +20,21 @@ export interface DashboardError {
   status?: number;
 }
 
+export type DashboardAnalysisSuccess = {
+  analysis: RepositoryAnalysis;
+  briefing: MaintainerBriefing;
+  analyzedAt: string;
+  repositoryRef: string;
+};
+
+export interface DashboardSession extends DashboardAnalysisSuccess {
+  demoMode?: boolean;
+}
+
 export type DashboardAnalysisResult =
-  | {
+  | ({
       success: true;
-      analysis: RepositoryAnalysis;
-      briefing: MaintainerBriefing;
-      analyzedAt: string;
-      repositoryRef: string;
-    }
+    } & DashboardAnalysisSuccess)
   | {
       success: false;
       error: DashboardError;
@@ -39,13 +46,13 @@ const FRIENDLY_ERROR_MESSAGES: Record<DashboardErrorCode, string> = {
   FORBIDDEN: "GitHub access denied. Sign in again or pick a repository you can access.",
   RATE_LIMIT: "Rate limit exceeded. Try again shortly.",
   UNAUTHORIZED: "Sign in with GitHub to analyze repositories.",
-  MISSING_API_KEY: "Add your API key in AI settings or switch to Mock mode.",
+  MISSING_API_KEY: "Connect a compatible provider in MaintainerOS AI settings, or use MaintainerOS AI · Demo.",
   INVALID_RESPONSE: "AI briefing failed. Try again.",
   AI_ERROR: "AI briefing failed. Try again.",
   PROVIDER_NOT_IMPLEMENTED:
-    "That AI provider is not available yet. Use Mock, Server AI, or a supported BYOK provider.",
+    "That MaintainerOS AI provider is not available yet. Use MaintainerOS AI, Demo mode, or another compatible provider.",
   PROVIDERS_EXHAUSTED:
-    "All AI providers are unavailable. Try again later or switch to Mock mode.",
+    "All MaintainerOS AI providers are unavailable. Try again later or switch to Demo mode.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
 

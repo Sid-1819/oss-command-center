@@ -1,5 +1,7 @@
 import type { DefaultSession } from "next-auth";
 
+export type AuthProviderId = "github" | "dev-token";
+
 declare module "next-auth" {
   interface Session {
     user: {
@@ -7,6 +9,7 @@ declare module "next-auth" {
       username: string;
     } & DefaultSession["user"];
     accessToken: string;
+    authProvider: AuthProviderId;
   }
 
   interface User {
@@ -19,6 +22,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     accessToken?: string;
     username?: string;
+    authProvider?: AuthProviderId;
   }
 }
 

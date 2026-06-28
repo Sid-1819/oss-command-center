@@ -1,9 +1,8 @@
 'use client';
 
-import { Code2, ArrowRight, Users } from 'lucide-react';
+import { Code2, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SectionHeader } from '@/components/section-header';
 import {
@@ -11,12 +10,15 @@ import {
   type DashboardSectionStateProps,
 } from '@/components/dashboard-section-state';
 import { PreviewListDialog } from '@/components/preview-list-dialog';
+import { GitHubExternalLinkRow } from '@/components/github-external-link-row';
+import { buildGitHubIssueUrl } from '@/lib/github/links';
 import type { MaintainerBriefing } from '@/types/maintainer-briefing';
 import type { RepositoryAnalysis } from '@/types/repository-analysis';
 
 interface ContributorOpportunitiesProps extends DashboardSectionStateProps {
   opportunities?: MaintainerBriefing['contributorOpportunities'];
   issues?: RepositoryAnalysis['issues'];
+  repository?: RepositoryAnalysis['repository'];
 }
 
 function ContributorOpportunitiesSkeleton() {
@@ -32,6 +34,7 @@ function ContributorOpportunitiesSkeleton() {
 export default function ContributorOpportunities({
   opportunities = [],
   issues = [],
+  repository,
   isLoading,
   isEmpty,
 }: ContributorOpportunitiesProps) {
@@ -76,33 +79,35 @@ export default function ContributorOpportunities({
               const title =
                 issueTitleByNumber.get(opportunity.issueNumber) ??
                 `Issue #${opportunity.issueNumber}`;
+              const href = repository
+                ? buildGitHubIssueUrl(
+                    repository.owner,
+                    repository.name,
+                    opportunity.issueNumber,
+                  )
+                : null;
 
-              return (
-                <div className="group list-item-interactive">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground ring-1 ring-white/[0.06]">
-                          #{opportunity.issueNumber}
-                        </span>
-                        <h3 className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
-                          {title}
-                        </h3>
-                      </div>
-                      <p className="text-xs leading-relaxed text-muted-foreground">
-                        {opportunity.reason}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                    >
-                      <ArrowRight className="size-4" />
-                    </Button>
+              const content = (
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground ring-1 ring-white/[0.06]">
+                      #{opportunity.issueNumber}
+                    </span>
+                    <h3 className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+                      {title}
+                    </h3>
                   </div>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    {opportunity.reason}
+                  </p>
                 </div>
               );
+
+              if (href) {
+                return <GitHubExternalLinkRow href={href}>{content}</GitHubExternalLinkRow>;
+              }
+
+              return <div className="list-item-interactive">{content}</div>;
             }}
           />
         )}

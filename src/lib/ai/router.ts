@@ -2,7 +2,7 @@ import type { LanguageModelSpec } from "@/lib/ai/providers/create-language-model
 import {
   DEFAULT_MODELS,
   type AiOperation,
-  type ChainProviderId,
+  type ByokProviderId,
 } from "@/lib/ai/types";
 
 export type AiTaskType = "reasoning" | "documentation";
@@ -35,14 +35,14 @@ export function getGeminiModelChain(taskType: AiTaskType): string[] {
 }
 
 export function getDefaultModelForProvider(
-  provider: ChainProviderId,
+  provider: ByokProviderId,
   taskType: AiTaskType,
 ): string {
   if (provider === "gemini") {
     return getPrimaryGeminiModel(taskType);
   }
 
-  return DEFAULT_MODELS.openrouter;
+  return DEFAULT_MODELS[provider];
 }
 
 export function getServerProviderChain(taskType: AiTaskType): LanguageModelSpec[] {

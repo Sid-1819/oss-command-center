@@ -8,9 +8,11 @@ import {
   deleteWorkflowContext,
   getActionRunForRepository,
   getActionRunState,
+  getDashboardSession,
   getPlanReview,
   getWorkflowContext,
   upsertActionRunState,
+  upsertDashboardSession,
   upsertPlanReview,
   upsertWorkflowContext,
 } from "@/lib/workflow-state/persistence";
@@ -22,6 +24,7 @@ import type {
   IssuePlanContext,
 } from "@/types/doc-plan-review";
 import type { ActionRun, ActionRunCompletion } from "@/types/action-run";
+import type { DashboardSession } from "@/types/dashboard-analysis";
 
 function toErrorResult(error: unknown): WorkflowStateResult<never> {
   if (error instanceof AuthError) {
@@ -94,6 +97,20 @@ export async function loadIssuePlanContextAction(): Promise<
   WorkflowStateResult<IssuePlanContext | null>
 > {
   return withSession((userId) => getWorkflowContext<IssuePlanContext>(userId, "issue"));
+}
+
+export async function saveDashboardSessionAction(
+  session: DashboardSession,
+): Promise<WorkflowStateResult<void>> {
+  return withSession(async (userId) => {
+    await upsertDashboardSession(userId, session);
+  });
+}
+
+export async function loadDashboardSessionAction(): Promise<
+  WorkflowStateResult<DashboardSession | null>
+> {
+  return withSession((userId) => getDashboardSession(userId));
 }
 
 export async function savePlanReviewAction(
