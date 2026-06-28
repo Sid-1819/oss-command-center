@@ -97,6 +97,7 @@ export type MarkdownDocActionErrorCode =
   | "AI_ERROR"
   | "RATE_LIMIT"
   | "PROVIDER_NOT_IMPLEMENTED"
+  | "PROVIDERS_EXHAUSTED"
   | "GITHUB_FETCH"
   | "GITHUB_BRANCH"
   | "GITHUB_UPDATE"

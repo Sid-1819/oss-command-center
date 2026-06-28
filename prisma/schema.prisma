@@ -36,3 +36,49 @@ model AiResponseCache {
   @@index([operation, inputHash])
   @@index([expiresAt])
 }
+
+model WorkflowContext {
+  id            String   @id @default(cuid())
+  userId        String
+  kind          String
+  repositoryRef String
+  targetFile    String?
+  issueNumber   Int?
+  suggestion    String?
+  payloadJson   Json
+  expiresAt     DateTime
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, kind])
+  @@index([expiresAt])
+}
+
+model PlanReviewRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  kind          String
+  repositoryRef String
+  targetFile    String   @default("")
+  issueNumber   Int      @default(0)
+  suggestion    String   @default("")
+  payloadJson   Json
+  plannedAt     DateTime
+  expiresAt     DateTime
+
+  @@unique([userId, kind, repositoryRef, targetFile, issueNumber, suggestion])
+  @@index([userId, expiresAt])
+}
+
+model ActionRunState {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  repositoryRef  String
+  actionType     String
+  runJson        Json
+  completionJson Json?
+  expiresAt      DateTime
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, repositoryRef])
+  @@index([expiresAt])
+}

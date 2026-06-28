@@ -5,6 +5,7 @@ import { KeyRound, Sparkles } from "lucide-react";
 import {
   aiConfigLabel,
   getEffectiveAiConfig,
+  isServerAiConfigured,
   loadAiConfig,
   saveAiConfig,
   type StoredAiConfig,
@@ -36,36 +37,35 @@ const PROVIDER_OPTIONS: {
   label: string;
   docsUrl?: string;
   requiresKey: boolean;
-  implemented: boolean;
 }[] = [
   {
     id: "mock",
     label: "Mock (no API key)",
     requiresKey: false,
-    implemented: true,
+  },
+  {
+    id: "auto",
+    label: "Server AI (automatic failover)",
+    requiresKey: false,
   },
   {
     id: "gemini",
-    label: "Google Gemini",
+    label: "Google Gemini (BYOK)",
     docsUrl: "https://ai.google.dev/gemini-api/docs/api-key",
     requiresKey: true,
-    implemented: true,
   },
   {
-    id: "openai",
-    label: "OpenAI (coming soon)",
-    docsUrl: "https://platform.openai.com/api-keys",
+    id: "openrouter",
+    label: "OpenRouter (BYOK)",
+    docsUrl: "https://openrouter.ai/keys",
     requiresKey: true,
-    implemented: false,
-  },
-  {
-    id: "anthropic",
-    label: "Claude (coming soon)",
-    docsUrl: "https://console.anthropic.com/settings/keys",
-    requiresKey: true,
-    implemented: false,
   },
 ];
+
+const MODEL_PLACEHOLDERS: Partial<Record<AiProviderId, string>> = {
+  gemini: "gemini-2.5-flash",
+  openrouter: "openrouter/free",
+};
 
 interface AiSettingsSheetProps {
   onSaved?: (config: StoredAiConfig) => void;
@@ -99,6 +99,7 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
   }
 
   const selectedProvider = PROVIDER_OPTIONS.find((option) => option.id === provider);
+  const showKeyFields = provider !== "mock" && provider !== "auto";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -118,12 +119,19 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
             AI settings
           </SheetTitle>
           <SheetDescription>
-            Bring your own API key. Keys stay in your browser and are sent only with each
-            request — never stored on our servers.
+            By default, hosted deployments use server-side keys with automatic
+            Gemini → OpenRouter failover. Override with your own key below.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-5 px-4 py-2">
+          {isServerAiConfigured() ? (
+            <p className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+              Server AI is configured. Select &quot;Server AI&quot; to use automatic
+              provider failover, or pick a BYOK provider to override.
+            </p>
+          ) : null}
+
           <div className="space-y-2">
             <Label htmlFor="ai-provider">Provider</Label>
             <Select
@@ -143,7 +151,14 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
             </Select>
           </div>
 
-          {provider !== "mock" ? (
+          {provider === "auto" ? (
+            <p className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-sm text-muted-foreground">
+              Uses server environment keys with automatic failover: Gemini 2.5 Flash
+              → OpenRouter free.
+            </p>
+          ) : null}
+
+          {showKeyFields ? (
             <>
               <div className="space-y-2">
                 <Label htmlFor="ai-api-key">API key</Label>
@@ -161,13 +176,7 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
                 <Label htmlFor="ai-model">Model override (optional)</Label>
                 <Input
                   id="ai-model"
-                  placeholder={
-                    provider === "gemini"
-                      ? "gemini-2.5-flash"
-                      : provider === "openai"
-                        ? "gpt-4o-mini"
-                        : "claude-sonnet-4-20250514"
-                  }
+                  placeholder={MODEL_PLACEHOLDERS[provider] ?? "Default model"}
                   value={model}
                   onChange={(event) => setModel(event.target.value)}
                 />
@@ -182,24 +191,20 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
                     rel="noreferrer"
                     className="text-primary underline-offset-2 hover:underline"
                   >
-                    {selectedProvider.label.replace(" (coming soon)", "")}
+                    {selectedProvider.label.replace(" (BYOK)", "")}
                   </a>
                   .
                 </p>
               ) : null}
-
-              {!selectedProvider?.implemented ? (
-                <p className="text-xs text-amber-600 dark:text-amber-400">
-                  This provider is not implemented yet. Use Mock mode or Gemini for now.
-                </p>
-              ) : null}
             </>
-          ) : (
+          ) : null}
+
+          {provider === "mock" ? (
             <p className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-sm text-muted-foreground">
               Mock mode returns fixture data for analysis, planning, and demo PR flows —
               ideal for local development without spending API quota.
             </p>
-          )}
+          ) : null}
         </div>
 
         <SheetFooter className="px-4">

@@ -11,6 +11,7 @@ export type DashboardErrorCode =
   | "INVALID_RESPONSE"
   | "AI_ERROR"
   | "PROVIDER_NOT_IMPLEMENTED"
+  | "PROVIDERS_EXHAUSTED"
   | "UNKNOWN";
 
 export interface DashboardError {
@@ -41,7 +42,10 @@ const FRIENDLY_ERROR_MESSAGES: Record<DashboardErrorCode, string> = {
   MISSING_API_KEY: "Add your API key in AI settings or switch to Mock mode.",
   INVALID_RESPONSE: "AI briefing failed. Try again.",
   AI_ERROR: "AI briefing failed. Try again.",
-  PROVIDER_NOT_IMPLEMENTED: "That AI provider is not available yet. Use Mock or Gemini.",
+  PROVIDER_NOT_IMPLEMENTED:
+    "That AI provider is not available yet. Use Mock, Server AI, or a supported BYOK provider.",
+  PROVIDERS_EXHAUSTED:
+    "All AI providers are unavailable. Try again later or switch to Mock mode.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
 

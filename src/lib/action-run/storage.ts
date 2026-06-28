@@ -1,58 +1,35 @@
+import {
+  clearActionRunAction,
+  findActionRunForRepositoryAction,
+  loadActionRunCompletionForRepositoryAction,
+  saveActionRunAction,
+} from "@/actions/workflow-state";
+import { assertWorkflowResult } from "@/lib/workflow-state/errors";
 import type { ActionRun, ActionRunCompletion } from "@/types/action-run";
 
 export const ACTION_RUN_STORAGE_KEY = "maintaineros:action-run";
 
-interface ActionRunStorageState {
-  run: ActionRun;
-  completion?: ActionRunCompletion;
-}
-
-export function saveActionRun(
+export async function saveActionRun(
   run: ActionRun,
   completion?: ActionRunCompletion,
-): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const state: ActionRunStorageState = { run, completion };
-  sessionStorage.setItem(ACTION_RUN_STORAGE_KEY, JSON.stringify(state));
+): Promise<void> {
+  assertWorkflowResult(await saveActionRunAction(run, completion));
 }
 
-function loadActionRunState(): ActionRunStorageState | null {
-  if (typeof window === "undefined") {
-    return null;
+export async function loadActionRunCompletion(
+  repositoryRef?: string,
+): Promise<ActionRunCompletion | null> {
+  if (repositoryRef) {
+    return assertWorkflowResult(
+      await loadActionRunCompletionForRepositoryAction(repositoryRef),
+    );
   }
 
-  const raw = sessionStorage.getItem(ACTION_RUN_STORAGE_KEY);
-
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as ActionRunStorageState | ActionRun;
-
-    if ("run" in parsed) {
-      return parsed;
-    }
-
-    return { run: parsed };
-  } catch {
-    return null;
-  }
+  return null;
 }
 
-export function loadActiveActionRun(): ActionRun | null {
-  return loadActionRunState()?.run ?? null;
-}
-
-export function loadActionRunCompletion(): ActionRunCompletion | null {
-  return loadActionRunState()?.completion ?? null;
-}
-
-export function loadActionRun(id: string): ActionRun | null {
-  const run = loadActiveActionRun();
+export async function loadActionRun(id: string, repositoryRef: string): Promise<ActionRun | null> {
+  const run = await findActionRunForRepository(repositoryRef);
 
   if (!run || run.id !== id) {
     return null;
@@ -61,22 +38,12 @@ export function loadActionRun(id: string): ActionRun | null {
   return run;
 }
 
-export function clearActionRun(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  sessionStorage.removeItem(ACTION_RUN_STORAGE_KEY);
+export async function clearActionRun(): Promise<void> {
+  assertWorkflowResult(await clearActionRunAction());
 }
 
-export function findActionRunForRepository(
+export async function findActionRunForRepository(
   repositoryRef: string,
-): ActionRun | null {
-  const run = loadActiveActionRun();
-
-  if (!run || run.repositoryRef !== repositoryRef) {
-    return null;
-  }
-
-  return run;
+): Promise<ActionRun | null> {
+  return assertWorkflowResult(await findActionRunForRepositoryAction(repositoryRef));
 }

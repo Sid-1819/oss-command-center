@@ -8,19 +8,38 @@ export interface StoredAiConfig extends AiRequestConfig {
   updatedAt: string;
 }
 
+const VALID_PROVIDERS = new Set<AiProviderId>([
+  "mock",
+  "auto",
+  "gemini",
+  "openrouter",
+]);
+
+function normalizeProvider(provider: string): AiProviderId {
+  if (VALID_PROVIDERS.has(provider as AiProviderId)) {
+    return provider as AiProviderId;
+  }
+
+  return "auto";
+}
+
 function defaultProvider(): AiProviderId {
   const envDefault = process.env.NEXT_PUBLIC_DEFAULT_AI_PROVIDER;
 
   if (
     envDefault === "mock" ||
+    envDefault === "auto" ||
     envDefault === "gemini" ||
-    envDefault === "openai" ||
-    envDefault === "anthropic"
+    envDefault === "openrouter"
   ) {
     return envDefault;
   }
 
   return "mock";
+}
+
+export function isServerAiConfigured(): boolean {
+  return process.env.NEXT_PUBLIC_AI_SERVER_CONFIGURED === "true";
 }
 
 export function loadAiConfig(): StoredAiConfig | null {
@@ -35,7 +54,11 @@ export function loadAiConfig(): StoredAiConfig | null {
   }
 
   try {
-    return JSON.parse(raw) as StoredAiConfig;
+    const parsed = JSON.parse(raw) as StoredAiConfig;
+    return {
+      ...parsed,
+      provider: normalizeProvider(parsed.provider),
+    };
   } catch {
     return null;
   }
@@ -73,11 +96,15 @@ export function getEffectiveAiConfig(): AiRequestConfig {
     };
   }
 
+  if (isServerAiConfigured()) {
+    return { provider: "auto" };
+  }
+
   return { provider: defaultProvider() };
 }
 
 export function isAiConfigReady(config: AiRequestConfig = getEffectiveAiConfig()): boolean {
-  if (config.provider === "mock") {
+  if (config.provider === "mock" || config.provider === "auto") {
     return true;
   }
 
@@ -87,6 +114,10 @@ export function isAiConfigReady(config: AiRequestConfig = getEffectiveAiConfig()
 export function aiConfigLabel(config: AiRequestConfig = getEffectiveAiConfig()): string {
   if (config.provider === "mock") {
     return "Mock data";
+  }
+
+  if (config.provider === "auto") {
+    return isServerAiConfigured() ? "Server AI" : "Server AI (auto)";
   }
 
   if (!config.apiKey?.trim()) {

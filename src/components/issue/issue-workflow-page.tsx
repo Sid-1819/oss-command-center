@@ -1,12 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { refreshActionRunStatus } from '@/actions/action-run';
 import { executeIssueFixAction } from '@/actions/issue-fix/executeIssueFixAction';
-import { planIssueFixAction } from '@/actions/issue-fix/planIssueFixAction';
+import { finalizeIssueFixPlanAction } from '@/actions/issue-fix/finalizeIssueFixPlanAction';
+import {
+  prepareIssueFixPlanAction,
+  type PrepareIssueFixPlanResult,
+} from '@/actions/issue-fix/prepareIssueFixPlanAction';
+import {
+  issueFixExecutionPlanSchema,
+  type IssueFixPlanPayload,
+} from '@/actions/issue-fix/types';
 import { AiLoadingPanel } from '@/components/ai-loading-panel';
 import { ExecutionWorkflow } from '@/components/workflow/execution-workflow';
 import type { ExecuteWorkflowResult } from '@/components/workflow/execution-workflow';
@@ -32,24 +40,15 @@ import {
   buildDemoCompletedActionRun,
   buildDemoRefreshCompletion,
 } from '@/lib/demo/refresh-completion';
+import {
+  isWorkflowStateError,
+  workflowStateErrorMessage,
+} from '@/lib/workflow-state/errors';
+import { loadIssuePlanContext } from '@/lib/workflow-state/context-storage';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import type { ExecutionResult, MaintenanceAction } from '@/types/execution-workflow';
-import {
-  ISSUE_PLAN_CONTEXT_KEY,
-  type IssuePlanContext,
-  type IssueFixPlanReview,
-} from '@/types/doc-plan-review';
-
-function readIssueContext(): IssuePlanContext | null {
-  if (typeof window === 'undefined') return null;
-  const raw = sessionStorage.getItem(ISSUE_PLAN_CONTEXT_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as IssuePlanContext;
-  } catch {
-    return null;
-  }
-}
+import type { IssueFixPlanReview, IssuePlanContext } from '@/types/doc-plan-review';
+import { useAiStream } from '@/hooks/use-ai-stream';
 
 function buildRestoredExecutionResult(actionRun: ActionRun): ExecutionResult {
   return {
@@ -73,6 +72,14 @@ function buildRestoredExecutionResult(actionRun: ActionRun): ExecutionResult {
 
 const TRACKABLE: ActionRun['status'][] = ['AWAITING_REVIEW', 'COMPLETED', 'CLOSED'];
 
+function workflowErrorMessage(error: unknown, fallback: string): string {
+  if (isWorkflowStateError(error)) {
+    return workflowStateErrorMessage(error);
+  }
+
+  return fallback;
+}
+
 export default function IssueWorkflowPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -92,6 +99,70 @@ export default function IssueWorkflowPage() {
   const [restoredExecutionResult, setRestoredExecutionResult] =
     useState<ExecutionResult | null>(null);
   const [previousHealthScore, setPreviousHealthScore] = useState<number | undefined>();
+  const prepareContextRef = useRef<Extract<PrepareIssueFixPlanResult, { success: true }> | null>(
+    null,
+  );
+
+  const { submit: submitPlan, object: streamingPlan } = useAiStream({
+    api: '/api/ai/issue-fix-plan',
+    schema: issueFixExecutionPlanSchema,
+    onFinish: async ({ object, error }) => {
+      const prepared = prepareContextRef.current;
+
+      if (!prepared) {
+        setIsPlanning(false);
+        return;
+      }
+
+      if (!object || error) {
+        setErrorMessage(error?.message ?? 'Failed to generate fix plan.');
+        prepareContextRef.current = null;
+        setIsPlanning(false);
+        return;
+      }
+
+      try {
+        const result = await finalizeIssueFixPlanAction({
+          issueNumber: prepared.issueNumber,
+          targetFile: prepared.targetFile,
+          currentContent: prepared.currentContent,
+          sourceSha: prepared.sourceSha,
+          payload: object as IssueFixPlanPayload,
+        });
+
+        if (!result.success) {
+          setErrorMessage(result.error.message);
+          return;
+        }
+
+        const review = buildIssuePlanReview(repo, issueNumber, result);
+
+        await saveIssuePlanReview(review);
+        setPlanReview(review);
+        setAction(
+          toIssueMaintenanceAction(
+            result.plan,
+            result.preview,
+            result.validation,
+            repo,
+            `Issue #${issueNumber}`,
+          ),
+        );
+      } catch (finalizeError) {
+        setErrorMessage(
+          workflowErrorMessage(finalizeError, 'Failed to save plan review.'),
+        );
+      } finally {
+        prepareContextRef.current = null;
+        setIsPlanning(false);
+      }
+    },
+    onError: (streamError) => {
+      setErrorMessage(streamError.message);
+      prepareContextRef.current = null;
+      setIsPlanning(false);
+    },
+  });
 
   const autoFixCandidate = useMemo(() => {
     if (!issueContext) return null;
@@ -118,66 +189,110 @@ export default function IssueWorkflowPage() {
 
   useEffect(() => {
     if (!repo) return;
-    const run = findActionRunForRepository(repo);
-    if (
-      run &&
-      TRACKABLE.includes(run.status) &&
-      run.actionType === 'issue-fix' &&
-      run.issueNumber === issueNumber
-    ) {
-      setRestoredActionRun(run);
-      setRestoredCompletion(loadActionRunCompletion());
-      setRestoredExecutionResult(buildRestoredExecutionResult(run));
+
+    let cancelled = false;
+
+    async function restoreActionRun() {
+      try {
+        const run = await findActionRunForRepository(repo);
+        if (cancelled) return;
+
+        if (
+          run &&
+          TRACKABLE.includes(run.status) &&
+          run.actionType === 'issue-fix' &&
+          run.issueNumber === issueNumber
+        ) {
+          const completion = await loadActionRunCompletion(repo);
+          if (cancelled) return;
+
+          setRestoredActionRun(run);
+          setRestoredCompletion(completion);
+          setRestoredExecutionResult(buildRestoredExecutionResult(run));
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setErrorMessage(workflowErrorMessage(error, 'Failed to restore workflow state.'));
+      }
     }
+
+    void restoreActionRun();
+
+    return () => {
+      cancelled = true;
+    };
   }, [repo, issueNumber]);
 
   useEffect(() => {
-    setIsInitializing(true);
-    setErrorMessage(null);
-    setAction(null);
-    setPlanReview(null);
-    setIssueContext(null);
+    let cancelled = false;
 
-    if (!repo || !Number.isFinite(issueNumber)) {
-      setErrorMessage('Missing repository or issue number.');
-      setIsInitializing(false);
-      return;
-    }
+    async function initialize() {
+      setIsInitializing(true);
+      setErrorMessage(null);
+      setAction(null);
+      setPlanReview(null);
+      setIssueContext(null);
 
-    const cachedReview = loadIssuePlanReview(repo, issueNumber);
-    if (cachedReview) {
-      setPlanReview(cachedReview);
-      setAction(
-        toIssueMaintenanceAction(
-          cachedReview.plan,
-          cachedReview.preview,
-          cachedReview.validation,
-          repo,
-          `Issue #${issueNumber}`,
-        ),
-      );
-      const context = readIssueContext();
-      if (context) {
-        setPreviousHealthScore(context.briefing.repositoryHealth.score);
+      if (!repo || !Number.isFinite(issueNumber)) {
+        setErrorMessage('Missing repository or issue number.');
+        setIsInitializing(false);
+        return;
       }
-      setIsInitializing(false);
-      return;
+
+      try {
+        const cachedReview = await loadIssuePlanReview(repo, issueNumber);
+        if (cancelled) return;
+
+        if (cachedReview) {
+          setPlanReview(cachedReview);
+          setAction(
+            toIssueMaintenanceAction(
+              cachedReview.plan,
+              cachedReview.preview,
+              cachedReview.validation,
+              repo,
+              `Issue #${issueNumber}`,
+            ),
+          );
+          const context = await loadIssuePlanContext();
+          if (cancelled) return;
+          if (context) {
+            setPreviousHealthScore(context.briefing.repositoryHealth.score);
+          }
+          setIsInitializing(false);
+          return;
+        }
+
+        const context = await loadIssuePlanContext();
+        if (cancelled) return;
+
+        if (!context || context.repositoryRef !== repo) {
+          setErrorMessage('Analysis context expired. Start from the dashboard Auto-Fix section.');
+          setIsInitializing(false);
+          return;
+        }
+
+        setIssueContext(context);
+        setPreviousHealthScore(context.briefing.repositoryHealth.score);
+        setIsInitializing(false);
+      } catch (error) {
+        if (cancelled) return;
+        setErrorMessage(
+          workflowErrorMessage(error, 'Failed to load workflow state from the database.'),
+        );
+        setIsInitializing(false);
+      }
     }
 
-    const context = readIssueContext();
-    if (!context || context.repositoryRef !== repo) {
-      setErrorMessage('Analysis context expired. Start from the dashboard Auto-Fix section.');
-      setIsInitializing(false);
-      return;
-    }
+    void initialize();
 
-    setIssueContext(context);
-    setPreviousHealthScore(context.briefing.repositoryHealth.score);
-    setIsInitializing(false);
+    return () => {
+      cancelled = true;
+    };
   }, [repo, issueNumber]);
 
   const handleStartAnalysis = useCallback(async () => {
-    const context = issueContext ?? readIssueContext();
+    const context = issueContext ?? (await loadIssuePlanContext());
     if (!context || context.repositoryRef !== repo) {
       setErrorMessage('Analysis context expired. Start from the dashboard Auto-Fix section.');
       return;
@@ -195,54 +310,66 @@ export default function IssueWorkflowPage() {
     setAction(null);
     setPlanReview(null);
 
-    const result = await planIssueFixAction({
-      repositoryRef: context.repositoryRef,
-      issueNumber,
-      analysis: context.analysis,
-      briefing: context.briefing,
-      aiConfig,
-      demoMode: context.demoMode ?? demoMode,
-    });
+    try {
+      const prepared = await prepareIssueFixPlanAction({
+        repositoryRef: context.repositoryRef,
+        issueNumber,
+        analysis: context.analysis,
+        briefing: context.briefing,
+        aiConfig,
+        demoMode: context.demoMode ?? demoMode,
+      });
 
-    if (!result.success) {
-      setErrorMessage(result.error.message);
+      if (!prepared.success) {
+        setErrorMessage(prepared.error.message);
+        setIsPlanning(false);
+        return;
+      }
+
+      prepareContextRef.current = prepared;
+
+      submitPlan({
+        issueNumber: prepared.issueNumber,
+        issueTitle: prepared.issueTitle,
+        issueBody: prepared.issueBody,
+        candidate: prepared.candidate,
+        targetFile: prepared.targetFile,
+        analysis: prepared.analysis,
+        currentContent: prepared.currentContent,
+        aiConfig: prepared.aiConfig,
+        demoMode: prepared.demoMode,
+      });
+    } catch (error) {
+      setErrorMessage(workflowErrorMessage(error, 'Failed to start plan generation.'));
       setIsPlanning(false);
-      return;
     }
-
-    const review = buildIssuePlanReview(repo, issueNumber, result);
-
-    saveIssuePlanReview(review);
-    setPlanReview(review);
-    setAction(
-      toIssueMaintenanceAction(
-        result.plan,
-        result.preview,
-        result.validation,
-        repo,
-        `Issue #${issueNumber}`,
-      ),
-    );
-    setIsPlanning(false);
-  }, [demoMode, issueContext, issueNumber, repo]);
+  }, [demoMode, issueContext, issueNumber, repo, submitPlan]);
 
   const handleReAnalyze = useCallback(() => {
-    clearIssuePlanReview();
-    setPlanReview(null);
-    setAction(null);
-    setRestoredActionRun(null);
-    setRestoredCompletion(null);
-    setRestoredExecutionResult(null);
-    setErrorMessage(null);
+    void (async () => {
+      try {
+        await clearIssuePlanReview();
+        setPlanReview(null);
+        setAction(null);
+        setRestoredActionRun(null);
+        setRestoredCompletion(null);
+        setRestoredExecutionResult(null);
+        setErrorMessage(null);
+      } catch (error) {
+        setErrorMessage(workflowErrorMessage(error, 'Failed to clear plan review.'));
+      }
+    })();
   }, []);
 
   const handleCreatePullRequest = useCallback(async (): Promise<ExecuteWorkflowResult> => {
     if (!planReview || !action) throw new Error('Plan not ready');
 
+    const storedContext = await loadIssuePlanContext();
+
     const result = await executeIssueFixAction({
       repositoryRef: planReview.repositoryRef,
       plan: planReview.plan,
-      demoMode: demoMode || readIssueContext()?.demoMode,
+      demoMode: demoMode || storedContext?.demoMode,
     });
 
     if (!result.success) throw new Error(result.error.message);
@@ -254,7 +381,7 @@ export default function IssueWorkflowPage() {
     );
 
     if (result.actionRun) {
-      saveActionRun(result.actionRun);
+      await saveActionRun(result.actionRun);
       setRestoredActionRun(result.actionRun);
       setRestoredCompletion(null);
       setRestoredExecutionResult(executionResult);
@@ -264,7 +391,7 @@ export default function IssueWorkflowPage() {
   }, [action, demoMode, planReview]);
 
   const handleRefreshStatus = useCallback(async (actionRun: ActionRun) => {
-    const context = readIssueContext();
+    const context = await loadIssuePlanContext();
 
     if (demoMode && context) {
       const completion = buildDemoRefreshCompletion({
@@ -273,7 +400,7 @@ export default function IssueWorkflowPage() {
       });
       const completedRun = buildDemoCompletedActionRun(actionRun);
 
-      saveActionRun(completedRun, completion);
+      await saveActionRun(completedRun, completion);
       setRestoredActionRun(completedRun);
       setRestoredCompletion(completion);
       setRestoredExecutionResult(buildRestoredExecutionResult(completedRun));
@@ -283,7 +410,7 @@ export default function IssueWorkflowPage() {
 
     const refreshed = await refreshActionRunStatus(actionRun);
     if (!refreshed.success) throw new Error(refreshed.error.message);
-    saveActionRun(refreshed.actionRun, refreshed.completion);
+    await saveActionRun(refreshed.actionRun, refreshed.completion);
     setRestoredActionRun(refreshed.actionRun);
     setRestoredCompletion(refreshed.completion ?? null);
     setRestoredExecutionResult(buildRestoredExecutionResult(refreshed.actionRun));
@@ -329,6 +456,21 @@ export default function IssueWorkflowPage() {
             message="Generating fix plan…"
             elapsedSeconds={elapsedSeconds}
             className="mt-8"
+            streamingSummary={
+              typeof streamingPlan?.summary === 'string' ? streamingPlan.summary : undefined
+            }
+            streamingSteps={streamingPlan?.steps?.flatMap((step) =>
+              step
+                ? [
+                    {
+                      operation: step.operation,
+                      section: step.section,
+                      rationale: step.rationale,
+                      content: step.content,
+                    },
+                  ]
+                : [],
+            )}
           />
         ) : null}
 

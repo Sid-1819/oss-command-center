@@ -1,77 +1,52 @@
+import {
+  clearIssuePlanReviewAction,
+  clearPlanReviewAction,
+  loadIssuePlanReviewAction,
+  loadPlanReviewAction,
+  saveIssuePlanReviewAction,
+  savePlanReviewAction,
+} from "@/actions/workflow-state";
+import { assertWorkflowResult } from "@/lib/workflow-state/errors";
 import type {
   PlanIssueFixActionResult,
   PlanMarkdownDocActionResult,
 } from "@/types/doc-plan-review";
 import {
-  DOC_PLAN_RESULT_KEY,
-  ISSUE_PLAN_RESULT_KEY,
   type DocPlanReview,
   type IssueFixPlanReview,
 } from "@/types/doc-plan-review";
 
-export function savePlanReview(review: DocPlanReview): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(DOC_PLAN_RESULT_KEY, JSON.stringify(review));
+export async function savePlanReview(review: DocPlanReview): Promise<void> {
+  assertWorkflowResult(await savePlanReviewAction(review));
 }
 
-export function loadPlanReview(
+export async function loadPlanReview(
   repositoryRef: string,
   targetFile: string,
   suggestion: string,
-): DocPlanReview | null {
-  if (typeof window === "undefined") return null;
-
-  const raw = sessionStorage.getItem(DOC_PLAN_RESULT_KEY);
-  if (!raw) return null;
-
-  try {
-    const review = JSON.parse(raw) as DocPlanReview;
-    if (
-      review.repositoryRef !== repositoryRef ||
-      review.targetFile !== targetFile ||
-      review.suggestion !== suggestion
-    ) {
-      return null;
-    }
-    return review;
-  } catch {
-    return null;
-  }
+): Promise<DocPlanReview | null> {
+  return assertWorkflowResult(
+    await loadPlanReviewAction(repositoryRef, targetFile, suggestion),
+  );
 }
 
-export function clearPlanReview(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(DOC_PLAN_RESULT_KEY);
+export async function clearPlanReview(): Promise<void> {
+  assertWorkflowResult(await clearPlanReviewAction());
 }
 
-export function saveIssuePlanReview(review: IssueFixPlanReview): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(ISSUE_PLAN_RESULT_KEY, JSON.stringify(review));
+export async function saveIssuePlanReview(review: IssueFixPlanReview): Promise<void> {
+  assertWorkflowResult(await saveIssuePlanReviewAction(review));
 }
 
-export function loadIssuePlanReview(
+export async function loadIssuePlanReview(
   repositoryRef: string,
   issueNumber: number,
-): IssueFixPlanReview | null {
-  if (typeof window === "undefined") return null;
-
-  const raw = sessionStorage.getItem(ISSUE_PLAN_RESULT_KEY);
-  if (!raw) return null;
-
-  try {
-    const review = JSON.parse(raw) as IssueFixPlanReview;
-    if (review.repositoryRef !== repositoryRef || review.issueNumber !== issueNumber) {
-      return null;
-    }
-    return review;
-  } catch {
-    return null;
-  }
+): Promise<IssueFixPlanReview | null> {
+  return assertWorkflowResult(await loadIssuePlanReviewAction(repositoryRef, issueNumber));
 }
 
-export function clearIssuePlanReview(): void {
-  if (typeof window === "undefined") return;
-  sessionStorage.removeItem(ISSUE_PLAN_RESULT_KEY);
+export async function clearIssuePlanReview(): Promise<void> {
+  assertWorkflowResult(await clearIssuePlanReviewAction());
 }
 
 export function buildDocPlanReview(

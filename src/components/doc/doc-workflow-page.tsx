@@ -1,13 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Sparkles } from 'lucide-react';
 import { refreshActionRunStatus } from '@/actions/action-run';
 import { executeMarkdownDocAction } from '@/actions/markdown-doc/executeMarkdownDocAction';
-import { planMarkdownDocAction } from '@/actions/markdown-doc/planMarkdownDocAction';
-import type { MarkdownDocExecutionPlan } from '@/actions/markdown-doc/types';
+import { finalizeMarkdownDocPlanAction } from '@/actions/markdown-doc/finalizeMarkdownDocPlanAction';
+import {
+  prepareMarkdownDocPlanAction,
+  type PrepareMarkdownDocPlanResult,
+} from '@/actions/markdown-doc/prepareMarkdownDocPlanAction';
+import {
+  markdownDocExecutionPlanSchema,
+  type MarkdownDocExecutionPlan,
+  type MarkdownDocPlanPayload,
+} from '@/actions/markdown-doc/types';
 import { AiLoadingPanel } from '@/components/ai-loading-panel';
 import { ExecutionWorkflow } from '@/components/workflow/execution-workflow';
 import type { ExecuteWorkflowResult } from '@/components/workflow/execution-workflow';
@@ -31,24 +39,18 @@ import {
 import { toExecutionResult } from '@/lib/actions/to-execution-result';
 import { toDocMaintenanceAction } from '@/lib/actions/to-maintenance-action';
 import { getEffectiveAiConfig, isAiConfigReady } from '@/lib/ai/client-settings';
+import {
+  isWorkflowStateError,
+  workflowStateErrorMessage,
+} from '@/lib/workflow-state/errors';
+import {
+  loadDocPlanContext,
+  saveDocPlanContext,
+} from '@/lib/workflow-state/context-storage';
 import type { ActionRun, ActionRunCompletion } from '@/types/action-run';
 import type { ExecutionResult, MaintenanceAction } from '@/types/execution-workflow';
-import {
-  DOC_PLAN_CONTEXT_KEY,
-  type DocPlanContext,
-  type DocPlanReview,
-} from '@/types/doc-plan-review';
-
-function readPlanContext(): DocPlanContext | null {
-  if (typeof window === 'undefined') return null;
-  const raw = sessionStorage.getItem(DOC_PLAN_CONTEXT_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as DocPlanContext;
-  } catch {
-    return null;
-  }
-}
+import type { DocPlanContext, DocPlanReview } from '@/types/doc-plan-review';
+import { useAiStream } from '@/hooks/use-ai-stream';
 
 function buildRestoredExecutionResult(actionRun: ActionRun): ExecutionResult {
   return {
@@ -76,6 +78,14 @@ const TRACKABLE_STATUSES: ActionRun['status'][] = [
   'CLOSED',
 ];
 
+function workflowErrorMessage(error: unknown, fallback: string): string {
+  if (isWorkflowStateError(error)) {
+    return workflowStateErrorMessage(error);
+  }
+
+  return fallback;
+}
+
 interface DocWorkflowPageProps {
   defaultFile?: string;
 }
@@ -101,6 +111,75 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
   const [restoredExecutionResult, setRestoredExecutionResult] =
     useState<ExecutionResult | null>(null);
   const [previousHealthScore, setPreviousHealthScore] = useState<number | undefined>();
+  const prepareContextRef = useRef<Extract<PrepareMarkdownDocPlanResult, { success: true }> | null>(
+    null,
+  );
+
+  const { submit: submitPlan, object: streamingPlan } = useAiStream({
+    api: '/api/ai/markdown-doc-plan',
+    schema: markdownDocExecutionPlanSchema,
+    onFinish: async ({ object, error }) => {
+      const prepared = prepareContextRef.current;
+
+      if (!prepared) {
+        setIsPlanning(false);
+        return;
+      }
+
+      if (!object || error) {
+        setErrorMessage(error?.message ?? 'Failed to generate documentation plan.');
+        prepareContextRef.current = null;
+        setIsPlanning(false);
+        return;
+      }
+
+      try {
+        const result = await finalizeMarkdownDocPlanAction({
+          targetFile: prepared.targetFile,
+          currentContent: prepared.currentContent,
+          sourceSha: prepared.sourceSha,
+          payload: object as MarkdownDocPlanPayload,
+        });
+
+        if (!result.success) {
+          setErrorMessage(result.error.message);
+          return;
+        }
+
+        const review = buildDocPlanReview(
+          prepared.repositoryRef,
+          prepared.targetFile,
+          prepared.suggestion,
+          result,
+        );
+
+        await savePlanReview(review);
+        setPlan(review.plan);
+        setPlanReview(review);
+        setAction(
+          toDocMaintenanceAction(
+            review.plan,
+            review.preview,
+            review.validation,
+            review.repositoryRef,
+            review.suggestion,
+          ),
+        );
+      } catch (finalizeError) {
+        setErrorMessage(
+          workflowErrorMessage(finalizeError, 'Failed to save plan review.'),
+        );
+      } finally {
+        prepareContextRef.current = null;
+        setIsPlanning(false);
+      }
+    },
+    onError: (streamError) => {
+      setErrorMessage(streamError.message);
+      prepareContextRef.current = null;
+      setIsPlanning(false);
+    },
+  });
 
   const canStartAnalysis = useMemo(() => {
     if (!docContext || docContext.repositoryRef !== repo || docContext.targetFile !== targetFile) {
@@ -121,85 +200,129 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
 
   useEffect(() => {
     if (!repo) return;
-    const existingRun = findActionRunForRepository(repo);
-    if (
-      existingRun &&
-      TRACKABLE_STATUSES.includes(existingRun.status) &&
-      (existingRun.actionType === 'markdown-doc' ||
-        existingRun.actionType === 'readme') &&
-      (!existingRun.targetFile || existingRun.targetFile === targetFile)
-    ) {
-      setRestoredActionRun(existingRun);
-      setRestoredCompletion(loadActionRunCompletion());
-      setRestoredExecutionResult(buildRestoredExecutionResult(existingRun));
+
+    let cancelled = false;
+
+    async function restoreActionRun() {
+      try {
+        const existingRun = await findActionRunForRepository(repo);
+        if (cancelled) return;
+
+        if (
+          existingRun &&
+          TRACKABLE_STATUSES.includes(existingRun.status) &&
+          (existingRun.actionType === 'markdown-doc' ||
+            existingRun.actionType === 'readme') &&
+          (!existingRun.targetFile || existingRun.targetFile === targetFile)
+        ) {
+          const completion = await loadActionRunCompletion(repo);
+          if (cancelled) return;
+
+          setRestoredActionRun(existingRun);
+          setRestoredCompletion(completion);
+          setRestoredExecutionResult(buildRestoredExecutionResult(existingRun));
+        }
+      } catch (error) {
+        if (cancelled) return;
+        setErrorMessage(workflowErrorMessage(error, 'Failed to restore workflow state.'));
+      }
     }
+
+    void restoreActionRun();
+
+    return () => {
+      cancelled = true;
+    };
   }, [repo, targetFile]);
 
   useEffect(() => {
-    setIsInitializing(true);
-    setErrorMessage(null);
-    setAction(null);
-    setPlan(null);
-    setPlanReview(null);
-    setDocContext(null);
+    let cancelled = false;
 
-    if (!repo || !suggestion) {
-      setErrorMessage(
-        'Missing repository or suggestion. Start from the dashboard Maintenance Queue.',
-      );
-      setIsInitializing(false);
-      return;
-    }
+    async function initialize() {
+      setIsInitializing(true);
+      setErrorMessage(null);
+      setAction(null);
+      setPlan(null);
+      setPlanReview(null);
+      setDocContext(null);
 
-    const cachedReview = loadPlanReview(repo, targetFile, suggestion);
-    if (cachedReview) {
-      setPlan(cachedReview.plan);
-      setPlanReview(cachedReview);
-      setAction(
-        toDocMaintenanceAction(
-          cachedReview.plan,
-          cachedReview.preview,
-          cachedReview.validation,
-          cachedReview.repositoryRef,
-          cachedReview.suggestion,
-        ),
-      );
-      const context = readPlanContext();
-      if (context) {
-        setPreviousHealthScore(context.briefing.repositoryHealth.score);
+      if (!repo || !suggestion) {
+        setErrorMessage(
+          'Missing repository or suggestion. Start from the dashboard Maintenance Queue.',
+        );
+        setIsInitializing(false);
+        return;
       }
-      setIsInitializing(false);
-      return;
+
+      try {
+        const cachedReview = await loadPlanReview(repo, targetFile, suggestion);
+        if (cancelled) return;
+
+        if (cachedReview) {
+          setPlan(cachedReview.plan);
+          setPlanReview(cachedReview);
+          setAction(
+            toDocMaintenanceAction(
+              cachedReview.plan,
+              cachedReview.preview,
+              cachedReview.validation,
+              cachedReview.repositoryRef,
+              cachedReview.suggestion,
+            ),
+          );
+          const context = await loadDocPlanContext();
+          if (cancelled) return;
+          if (context) {
+            setPreviousHealthScore(context.briefing.repositoryHealth.score);
+          }
+          setIsInitializing(false);
+          return;
+        }
+
+        const context = await loadDocPlanContext();
+        if (cancelled) return;
+
+        if (!context) {
+          setErrorMessage(
+            'Analysis context expired. Go back to the dashboard, analyze again, then start a doc update.',
+          );
+          setIsInitializing(false);
+          return;
+        }
+
+        if (context.repositoryRef !== repo || context.targetFile !== targetFile) {
+          setErrorMessage('Repository or file mismatch. Start again from the dashboard.');
+          setIsInitializing(false);
+          return;
+        }
+
+        if (context.suggestion !== suggestion) {
+          setErrorMessage('Suggestion mismatch. Start again from the dashboard.');
+          setIsInitializing(false);
+          return;
+        }
+
+        setDocContext(context);
+        setPreviousHealthScore(context.briefing.repositoryHealth.score);
+        setIsInitializing(false);
+      } catch (error) {
+        if (cancelled) return;
+        setErrorMessage(
+          workflowErrorMessage(error, 'Failed to load workflow state from the database.'),
+        );
+        setIsInitializing(false);
+      }
     }
 
-    const context = readPlanContext();
-    if (!context) {
-      setErrorMessage(
-        'Analysis context expired. Go back to the dashboard, analyze again, then start a doc update.',
-      );
-      setIsInitializing(false);
-      return;
-    }
+    void initialize();
 
-    if (context.repositoryRef !== repo || context.targetFile !== targetFile) {
-      setErrorMessage('Repository or file mismatch. Start again from the dashboard.');
-      setIsInitializing(false);
-      return;
-    }
-
-    if (context.suggestion !== suggestion) {
-      setErrorMessage('Suggestion mismatch. Start again from the dashboard.');
-      setIsInitializing(false);
-      return;
-    }
-
-    setDocContext(context);
-    setPreviousHealthScore(context.briefing.repositoryHealth.score);
-    setIsInitializing(false);
+    return () => {
+      cancelled = true;
+    };
   }, [repo, targetFile, suggestion]);
 
   const handleStartAnalysis = useCallback(async () => {
-    const context = docContext ?? readPlanContext();
+    const context = docContext ?? (await loadDocPlanContext());
     if (!context || context.repositoryRef !== repo || context.targetFile !== targetFile) {
       setErrorMessage('Analysis context expired. Start again from the dashboard.');
       return;
@@ -223,53 +346,55 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
     setPlan(null);
     setPlanReview(null);
 
-    const result = await planMarkdownDocAction({
-      repositoryRef: context.repositoryRef,
-      targetFile: context.targetFile,
-      suggestion: context.suggestion,
-      analysis: context.analysis,
-      briefing: context.briefing,
-      aiConfig,
-      demoMode: context.demoMode ?? demoMode,
-    });
+    try {
+      const prepared = await prepareMarkdownDocPlanAction({
+        repositoryRef: context.repositoryRef,
+        targetFile: context.targetFile,
+        suggestion: context.suggestion,
+        analysis: context.analysis,
+        briefing: context.briefing,
+        aiConfig,
+        demoMode: context.demoMode ?? demoMode,
+      });
 
-    if (!result.success) {
-      setErrorMessage(result.error.message);
+      if (!prepared.success) {
+        setErrorMessage(prepared.error.message);
+        setIsPlanning(false);
+        return;
+      }
+
+      prepareContextRef.current = prepared;
+
+      submitPlan({
+        targetFile: prepared.targetFile,
+        analysis: prepared.analysis,
+        briefing: context.briefing,
+        suggestion: prepared.suggestion,
+        currentContent: prepared.currentContent,
+        aiConfig: prepared.aiConfig,
+        demoMode: prepared.demoMode,
+      });
+    } catch (error) {
+      setErrorMessage(workflowErrorMessage(error, 'Failed to start plan generation.'));
       setIsPlanning(false);
-      return;
     }
-
-    const review = buildDocPlanReview(
-      context.repositoryRef,
-      context.targetFile,
-      context.suggestion,
-      result,
-    );
-
-    savePlanReview(review);
-    setPlan(review.plan);
-    setPlanReview(review);
-    setAction(
-      toDocMaintenanceAction(
-        review.plan,
-        review.preview,
-        review.validation,
-        review.repositoryRef,
-        review.suggestion,
-      ),
-    );
-    setIsPlanning(false);
-  }, [demoMode, docContext, repo, suggestion, targetFile]);
+  }, [demoMode, docContext, repo, submitPlan, suggestion, targetFile]);
 
   const handleReAnalyze = useCallback(() => {
-    clearPlanReview();
-    setPlan(null);
-    setPlanReview(null);
-    setAction(null);
-    setRestoredActionRun(null);
-    setRestoredCompletion(null);
-    setRestoredExecutionResult(null);
-    setErrorMessage(null);
+    void (async () => {
+      try {
+        await clearPlanReview();
+        setPlan(null);
+        setPlanReview(null);
+        setAction(null);
+        setRestoredActionRun(null);
+        setRestoredCompletion(null);
+        setRestoredExecutionResult(null);
+        setErrorMessage(null);
+      } catch (error) {
+        setErrorMessage(workflowErrorMessage(error, 'Failed to clear plan review.'));
+      }
+    })();
   }, []);
 
   const handleCreatePullRequest = useCallback(async (): Promise<ExecuteWorkflowResult> => {
@@ -277,15 +402,17 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
 
     setErrorMessage(null);
 
+    const storedContext = await loadDocPlanContext();
+
     const result = await executeMarkdownDocAction({
       repositoryRef: planReview.repositoryRef,
       plan: planReview.plan,
-      demoMode: demoMode || readPlanContext()?.demoMode,
+      demoMode: demoMode || storedContext?.demoMode,
     });
 
     if (!result.success) {
       if (result.error.code === 'README_CHANGED' || result.error.code === 'FILE_CHANGED') {
-        clearPlanReview();
+        await clearPlanReview();
         setErrorMessage(
           `${targetFile} changed since this plan was created. Analyze again and start a fresh update.`,
         );
@@ -300,7 +427,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
     );
 
     if (result.actionRun) {
-      saveActionRun(result.actionRun);
+      await saveActionRun(result.actionRun);
       setRestoredActionRun(result.actionRun);
       setRestoredCompletion(null);
       setRestoredExecutionResult(executionResult);
@@ -311,7 +438,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
 
   const handleRefreshStatus = useCallback(
     async (actionRun: ActionRun) => {
-      const context = readPlanContext();
+      const context = await loadDocPlanContext();
 
       if (demoMode && context) {
         const completion = buildDemoRefreshCompletion({
@@ -320,7 +447,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
         });
         const completedRun = buildDemoCompletedActionRun(actionRun);
 
-        saveActionRun(completedRun, completion);
+        await saveActionRun(completedRun, completion);
         setRestoredActionRun(completedRun);
         setRestoredCompletion(completion);
         setRestoredExecutionResult(buildRestoredExecutionResult(completedRun));
@@ -331,7 +458,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
       const refreshed = await refreshActionRunStatus(actionRun);
       if (!refreshed.success) throw new Error(refreshed.error.message);
 
-      saveActionRun(refreshed.actionRun, refreshed.completion);
+      await saveActionRun(refreshed.actionRun, refreshed.completion);
 
       if (refreshed.completion?.analysis && refreshed.completion.briefing) {
         const docSuggestion = refreshed.completion.nextActions.find(
@@ -351,7 +478,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
           analyzedAt: new Date().toISOString(),
         };
 
-        sessionStorage.setItem(DOC_PLAN_CONTEXT_KEY, JSON.stringify(nextContext));
+        await saveDocPlanContext(nextContext);
       }
 
       setRestoredActionRun(refreshed.actionRun);
@@ -368,23 +495,31 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
 
   const handleExecuteDocSuggestion = useCallback(
     (nextFile: string, nextSuggestion: string) => {
-      const context = readPlanContext();
-      if (!context || context.repositoryRef !== repo) {
-        setErrorMessage('Analysis context unavailable. Refresh after merge or analyze again.');
-        return;
-      }
+      void (async () => {
+        try {
+          const context = await loadDocPlanContext();
+          if (!context || context.repositoryRef !== repo) {
+            setErrorMessage(
+              'Analysis context unavailable. Refresh after merge or analyze again.',
+            );
+            return;
+          }
 
-      clearPlanReview();
-      const nextContext: DocPlanContext = {
-        ...context,
-        targetFile: nextFile,
-        suggestion: nextSuggestion,
-      };
-      sessionStorage.setItem(DOC_PLAN_CONTEXT_KEY, JSON.stringify(nextContext));
+          await clearPlanReview();
+          const nextContext: DocPlanContext = {
+            ...context,
+            targetFile: nextFile,
+            suggestion: nextSuggestion,
+          };
+          await saveDocPlanContext(nextContext);
 
-      router.push(
-        `/app/doc?repo=${encodeURIComponent(repo)}&file=${encodeURIComponent(nextFile)}&suggestion=${encodeURIComponent(nextSuggestion)}${demoMode ? '&demo=1' : ''}`,
-      );
+          router.push(
+            `/app/doc?repo=${encodeURIComponent(repo)}&file=${encodeURIComponent(nextFile)}&suggestion=${encodeURIComponent(nextSuggestion)}${demoMode ? '&demo=1' : ''}`,
+          );
+        } catch (error) {
+          setErrorMessage(workflowErrorMessage(error, 'Failed to start next doc update.'));
+        }
+      })();
     },
     [demoMode, repo, router],
   );
@@ -423,6 +558,21 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
           <AiLoadingPanel
             message="Generating update plan…"
             elapsedSeconds={elapsedSeconds}
+            streamingSummary={
+              typeof streamingPlan?.summary === 'string' ? streamingPlan.summary : undefined
+            }
+            streamingSteps={streamingPlan?.steps?.flatMap((step) =>
+              step
+                ? [
+                    {
+                      operation: step.operation,
+                      section: step.section,
+                      rationale: step.rationale,
+                      content: step.content,
+                    },
+                  ]
+                : [],
+            )}
           />
         ) : null}
 

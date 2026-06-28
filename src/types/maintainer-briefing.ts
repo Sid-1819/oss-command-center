@@ -169,7 +169,8 @@ export type GenerateMaintainerBriefingErrorCode =
   | "VALIDATION"
   | "AI_ERROR"
   | "RATE_LIMIT"
-  | "PROVIDER_NOT_IMPLEMENTED";
+  | "PROVIDER_NOT_IMPLEMENTED"
+  | "PROVIDERS_EXHAUSTED";
 
 export class GenerateMaintainerBriefingError extends Error {
   readonly code: GenerateMaintainerBriefingErrorCode;

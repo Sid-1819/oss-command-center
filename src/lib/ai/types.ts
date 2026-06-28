@@ -1,6 +1,14 @@
 import type { z } from "zod";
 
-export type AiProviderId = "mock" | "gemini" | "openai" | "anthropic";
+export type AiProviderId =
+  | "mock"
+  | "auto"
+  | "gemini"
+  | "openrouter";
+
+export type AiExecutionMode = "mock" | "byok" | "chain";
+
+export type ChainProviderId = "gemini" | "openrouter";
 
 export type AiOperation =
   | "maintainer-briefing"
@@ -9,6 +17,13 @@ export type AiOperation =
 
 export interface AiRequestConfig {
   provider: AiProviderId;
+  apiKey?: string;
+  model?: string;
+}
+
+export interface ResolvedAiConfig {
+  mode: AiExecutionMode;
+  provider?: Exclude<AiProviderId, "mock" | "auto">;
   apiKey?: string;
   model?: string;
 }
@@ -27,13 +42,21 @@ export interface AiProvider {
   generateRawJson(request: StructuredJsonRequest): Promise<string>;
 }
 
+export interface ProviderAttemptResult {
+  provider: ChainProviderId;
+  model: string;
+  usedFallback: boolean;
+  attempt: number;
+}
+
 export type AiErrorCode =
   | "MISSING_API_KEY"
   | "INVALID_RESPONSE"
   | "VALIDATION"
   | "AI_ERROR"
   | "RATE_LIMIT"
-  | "PROVIDER_NOT_IMPLEMENTED";
+  | "PROVIDER_NOT_IMPLEMENTED"
+  | "PROVIDERS_EXHAUSTED";
 
 export class AiConfigError extends Error {
   readonly code: AiErrorCode;
@@ -47,8 +70,15 @@ export class AiConfigError extends Error {
   }
 }
 
-export const DEFAULT_MODELS: Record<Exclude<AiProviderId, "mock">, string> = {
+export const DEFAULT_MODELS: Record<
+  Exclude<AiProviderId, "mock" | "auto">,
+  string
+> = {
   gemini: "gemini-2.5-flash",
-  openai: "gpt-4o-mini",
-  anthropic: "claude-sonnet-4-20250514",
+  openrouter: "openrouter/free",
+};
+
+export const SERVER_CHAIN_DEFAULTS: Record<ChainProviderId, string> = {
+  gemini: DEFAULT_MODELS.gemini,
+  openrouter: DEFAULT_MODELS.openrouter,
 };

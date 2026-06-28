@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import type { AiOperation, AiRequestConfig } from "@/lib/ai/types";
+import type { AiOperation, AiRequestConfig, ResolvedAiConfig } from "@/lib/ai/types";
+import { toAiRequestConfig } from "@/lib/ai/resolve-ai-config";
 
 const TTL_HOURS: Record<AiOperation, number> = {
   "maintainer-briefing": Number(process.env.AI_CACHE_BRIEFING_TTL_HOURS ?? 6),
@@ -24,15 +25,24 @@ function stableStringify(value: unknown): string {
 
 export function buildCacheFingerprint(
   operation: AiOperation,
-  aiConfig: AiRequestConfig,
+  aiConfig: AiRequestConfig | ResolvedAiConfig,
   inputs: Record<string, unknown>,
 ): string {
-  const payload = stableStringify({
-    operation,
-    provider: aiConfig.provider,
-    model: aiConfig.model ?? "default",
-    inputs,
-  });
+  const normalized =
+    "mode" in aiConfig ? toAiRequestConfig(aiConfig) : aiConfig;
+
+  const payload =
+    normalized.provider === "auto" || normalized.provider === "mock"
+      ? stableStringify({
+          operation,
+          inputs,
+        })
+      : stableStringify({
+          operation,
+          provider: normalized.provider,
+          model: normalized.model ?? "default",
+          inputs,
+        });
 
   return createHash("sha256").update(payload).digest("hex");
 }
@@ -75,11 +85,15 @@ export async function getCachedResponse<T>(
 export async function setCachedResponse(
   fingerprint: string,
   operation: AiOperation,
-  aiConfig: AiRequestConfig,
+  aiConfig: AiRequestConfig | ResolvedAiConfig,
   model: string,
   response: unknown,
+  providerUsed?: string,
 ): Promise<void> {
-  if (!isCacheEnabled() || aiConfig.provider === "mock") {
+  const normalized =
+    "mode" in aiConfig ? toAiRequestConfig(aiConfig) : aiConfig;
+
+  if (!isCacheEnabled() || normalized.provider === "mock") {
     return;
   }
 
@@ -92,7 +106,7 @@ export async function setCachedResponse(
       create: {
         id: fingerprint,
         operation,
-        provider: aiConfig.provider,
+        provider: providerUsed ?? normalized.provider,
         model,
         inputHash: fingerprint,
         responseJson: response as object,
@@ -102,6 +116,7 @@ export async function setCachedResponse(
         responseJson: response as object,
         expiresAt,
         model,
+        provider: providerUsed ?? normalized.provider,
       },
     });
   } catch {
