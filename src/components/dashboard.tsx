@@ -392,10 +392,16 @@ export default function Dashboard({
         onRepositoryRefChange={setRepositoryRef}
         onAnalyze={() => void handleAnalyze()}
         isAnalyzing={isAnalyzing}
-        activeRepository={hasSuccessfulResult ? result.repositoryRef : undefined}
+        activeRepository={
+          isAnalyzing && trimmedRef
+            ? trimmedRef
+            : hasSuccessfulResult
+              ? result.repositoryRef
+              : undefined
+        }
         aiSettings={<AiSettingsSheet onSaved={handleAiConfigSaved} />}
         demoMode={demoMode}
-        variant={showHome ? 'home' : 'workspace'}
+        variant={showGrid ? 'workspace' : 'home'}
       />
 
       {demoMode ? (
@@ -447,7 +453,7 @@ export default function Dashboard({
       )}
 
       {isRestoringSession || isAnalyzing ? (
-        <div className="mx-auto w-full max-w-7xl px-6 pt-4">
+        <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-3xl flex-col items-center justify-center px-6 py-12">
           <AiLoadingPanel
             message={
               isRestoringSession
@@ -456,15 +462,15 @@ export default function Dashboard({
                   ? 'Loading demo briefing…'
                   : 'Fetching GitHub data and generating AI briefing…'
             }
+            repositoryRef={trimmedRef || undefined}
             elapsedSeconds={isAnalyzing ? elapsedSeconds : undefined}
-            compact
             streamingSummary={
               isAnalyzing && typeof streamingBriefing?.summary === 'string'
                 ? streamingBriefing.summary
                 : undefined
             }
           />
-        </div>
+        </main>
       ) : null}
 
       {hasSuccessfulResult ? (
