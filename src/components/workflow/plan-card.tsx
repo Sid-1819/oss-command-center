@@ -1,6 +1,7 @@
 'use client';
 
-import { ExternalLink, Lightbulb } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { ExternalLink, Lightbulb, FileText, Sparkles, Package, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { MaintenanceAction } from '@/types/execution-workflow';
@@ -11,11 +12,11 @@ interface PlanCardProps {
 }
 
 export function PlanCard({ action, stepCount }: PlanCardProps) {
-  const typeIcons: Record<string, string> = {
-    documentation: '📄',
-    cleanup: '🧹',
-    'update-deps': '📦',
-    configuration: '⚙️',
+  const typeIcons: Record<string, ReactNode> = {
+    documentation: <FileText className="size-6 text-muted-foreground" />,
+    cleanup: <Sparkles className="size-6 text-muted-foreground" />,
+    'update-deps': <Package className="size-6 text-muted-foreground" />,
+    configuration: <Settings className="size-6 text-muted-foreground" />,
   };
 
   const typeLabels: Record<string, string> = {
@@ -34,7 +35,7 @@ export function PlanCard({ action, stepCount }: PlanCardProps) {
               <Badge variant="secondary" className="w-fit">
                 {typeLabels[action.type]}
               </Badge>
-              <span className="text-2xl">{typeIcons[action.type]}</span>
+              <span className="flex items-center">{typeIcons[action.type]}</span>
             </div>
             <CardTitle className="text-lg">{action.title}</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">{action.description}</p>

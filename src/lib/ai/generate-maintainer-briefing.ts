@@ -14,8 +14,6 @@ import {
 import { normalizeBriefing } from "@/lib/maintainer-briefing-utils";
 import { AiConfigError } from "@/lib/ai/types";
 
-const BRIEFING_MODEL = "gemini-2.5-flash";
-
 function toBriefingError(error: AiConfigError): never {
   throw new GenerateMaintainerBriefingError(error.message, error.code, error.status);
 }
@@ -38,7 +36,6 @@ export async function generateMaintainerBriefingFromAnalysis(
       systemInstruction: MAINTAINER_BRIEFING_SYSTEM_INSTRUCTION,
       userPrompt: buildMaintainerBriefingPrompt(analysis),
       schema: maintainerBriefingSchema,
-      modelDefault: BRIEFING_MODEL,
     },
     onError: toBriefingError,
     onInvalidResponse: (reason) => {

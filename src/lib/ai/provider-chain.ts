@@ -5,7 +5,16 @@ import {
   getServerProviderChain,
   type LanguageModelSpec,
 } from "@/lib/ai/providers/create-language-model";
-import { AiConfigError, type ChainProviderId, type ResolvedAiConfig } from "@/lib/ai/types";
+import {
+  getDefaultModelForProvider,
+  getTaskTypeForOperation,
+} from "@/lib/ai/router";
+import {
+  AiConfigError,
+  type AiOperation,
+  type ChainProviderId,
+  type ResolvedAiConfig,
+} from "@/lib/ai/types";
 
 export interface ResolvedModelTarget {
   mode: ResolvedAiConfig["mode"];
@@ -13,7 +22,12 @@ export interface ResolvedModelTarget {
   modelOverride?: string;
 }
 
-export function resolveModelTargets(config: ResolvedAiConfig): ResolvedModelTarget {
+export function resolveModelTargets(
+  config: ResolvedAiConfig,
+  operation: AiOperation,
+): ResolvedModelTarget {
+  const taskType = getTaskTypeForOperation(operation);
+
   if (config.mode === "mock") {
     return { mode: "mock", models: [] };
   }
@@ -39,14 +53,14 @@ export function resolveModelTargets(config: ResolvedAiConfig): ResolvedModelTarg
         {
           provider,
           apiKey: config.apiKey,
-          model: config.model?.trim() || "",
+          model: config.model?.trim() || getDefaultModelForProvider(provider, taskType),
         },
       ],
       modelOverride: config.model,
     };
   }
 
-  const chain = getServerProviderChain();
+  const chain = getServerProviderChain(taskType);
 
   if (chain.length === 0) {
     throw new AiConfigError(

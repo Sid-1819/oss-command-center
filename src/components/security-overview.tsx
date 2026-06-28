@@ -99,30 +99,33 @@ export default function SecurityOverview({
   isLoading,
   isEmpty,
 }: SecurityOverviewProps) {
-  // Mock security issues for demonstration
-  const securityIssues: SecurityIssue[] = [
-    {
-      id: 'deps',
-      title: 'Outdated Dependencies',
-      severity: 'high',
-      description: '8 packages with known vulnerabilities detected',
-      icon: <AlertTriangle className="size-4" />,
-    },
-    {
-      id: 'license',
-      title: 'License Compliance',
-      severity: 'medium',
-      description: 'Review GPL-licensed dependencies',
-      icon: <Clock className="size-4" />,
-    },
-    {
-      id: 'secure',
-      title: 'Security Scanning',
-      severity: 'low',
-      description: 'No critical vulnerabilities found',
-      icon: <CheckCircle className="size-4" />,
-    },
-  ];
+  const showContent = !isEmpty && !isLoading;
+
+  const securityIssues: SecurityIssue[] = showContent
+    ? [
+        {
+          id: 'deps',
+          title: 'Outdated Dependencies',
+          severity: 'high',
+          description: '8 packages with known vulnerabilities detected',
+          icon: <AlertTriangle className="size-4" />,
+        },
+        {
+          id: 'license',
+          title: 'License Compliance',
+          severity: 'medium',
+          description: 'Review GPL-licensed dependencies',
+          icon: <Clock className="size-4" />,
+        },
+        {
+          id: 'secure',
+          title: 'Security Scanning',
+          severity: 'low',
+          description: 'No critical vulnerabilities found',
+          icon: <CheckCircle className="size-4" />,
+        },
+      ]
+    : [];
 
   const criticalCount = securityIssues.filter((i) => i.severity === 'critical').length;
   const highCount = securityIssues.filter((i) => i.severity === 'high').length;

@@ -3,104 +3,104 @@
 ## ASCII Layout Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         HEADER                              │
-│  Repository Picker | Analysis Status | User Menu            │
-└─────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────┐
-│           MAINTAINER BRIEFING (Full Width)                  │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │ Summary Text                                             ││
-│  │ Health Score: 78/100 | Est Time: 45min | Status: Healthy││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
+ HEADER 
+ Repository Picker | Analysis Status | User Menu 
 
-┌──────────────────────────────────────┬─────────────────────┐
-│  TODAY'S PRIORITIES                  │  MERGE QUEUE        │
-│  (2/3 width)                         │  (1/3 width)        │
-│  ┌──────────────────────────────────┐│┌───────────────────┐│
-│  │ [HIGH] Fix auth bug              │││ PR#123: Security  ││
-│  │ [MEDIUM] Update docs             │││ PR#124: Features  ││
-│  │ [LOW] Refactor utils             │││ PR#125: Deps      ││
-│  └──────────────────────────────────┘│└───────────────────┘│
-└──────────────────────────────────────┴─────────────────────┘
 
-┌──────────────────────────────────────┬─────────────────────┐
-│  AI MAINTENANCE QUEUE                │  SECURITY OVERVIEW  │
-│  (1/2 width)                         │  (1/2 width)        │
-│  ┌──────────────────────────────────┐│┌───────────────────┐│
-│  │ README: Add API docs             │││ 🔴 Outdated deps  ││
-│  │ CHANGELOG: Add v2.1 notes        │││ 🟡 License issue  ││
-│  │ RELEASE: Prepare v2.1.0          │││ 🟢 Scanning OK    ││
-│  └──────────────────────────────────┘│└───────────────────┘│
-└──────────────────────────────────────┴─────────────────────┘
 
-┌──────────────────────────────────────┬─────────────────────┐
-│  RELEASE ASSISTANT                   │  REPOSITORY HEALTH  │
-│  (2/3 width)                         │  (1/3 width)        │
-│  ┌──────────────────────────────────┐│┌───────────────────┐│
-│  │ Version bump suggestions          │││ ⭐ 1.2K           ││
-│  │ Changelog generation              │││ 🔀 245 Forks      ││
-│  │ Release checklist                 │││ 🐛 89 Issues      ││
-│  └──────────────────────────────────┘│└───────────────────┘│
-└──────────────────────────────────────┴─────────────────────┘
+ MAINTAINER BRIEFING (Full Width) 
+ 
+ Summary Text 
+ Health Score: 78/100 | Est Time: 45min | Status: Healthy
+ 
 
-┌─────────────────────────────────────────────────────────────┐
-│          CONTRIBUTOR OPPORTUNITIES (Full Width)             │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │ Good first issues | Mentoring opportunities             ││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
+
+
+ TODAY'S PRIORITIES MERGE QUEUE 
+ (2/3 width) (1/3 width) 
+ 
+ [HIGH] Fix auth bug PR#123: Security 
+ [MEDIUM] Update docs PR#124: Features 
+ [LOW] Refactor utils PR#125: Deps 
+ 
+
+
+
+ AI MAINTENANCE QUEUE SECURITY OVERVIEW 
+ (1/2 width) (1/2 width) 
+ 
+ README: Add API docs [critical] Outdated deps 
+ CHANGELOG: Add v2.1 notes [medium] License issue 
+ RELEASE: Prepare v2.1.0 [ok] Scanning OK 
+ 
+
+
+
+ RELEASE ASSISTANT REPOSITORY HEALTH 
+ (2/3 width) (1/3 width) 
+ 
+ Version bump suggestions 1.2K 
+ Changelog generation 245 Forks 
+ Release checklist 89 Issues 
+ 
+
+
+
+ CONTRIBUTOR OPPORTUNITIES (Full Width) 
+ 
+ Good first issues | Mentoring opportunities 
+ 
+
 ```
 
 ## Desktop Layout (≥ 1024px)
 
 ### Row 1: Maintainer Briefing
 ```
-┌─────────────────────────────────┐
-│    Maintainer Briefing (100%)    │
-│    lg:col-span-1 (Full width)    │
-└─────────────────────────────────┘
+
+ Maintainer Briefing (100%) 
+ lg:col-span-1 (Full width) 
+
 ```
 
 ### Row 2: Today's Priorities & Merge Queue
 ```
-┌──────────────────────────┬─────────────┐
-│ Today's Priorities       │ Merge Queue │
-│ lg:col-span-2 (66.67%)   │ lg:col-1    │
-│ space-y-5                │ (33.33%)    │
-└──────────────────────────┴─────────────┘
+
+ Today's Priorities Merge Queue 
+ lg:col-span-2 (66.67%) lg:col-1 
+ space-y-5 (33.33%) 
+
 Grid: grid-cols-1 gap-5 lg:grid-cols-3
 ```
 
 ### Row 3: Maintenance & Security
 ```
-┌──────────────────────┬──────────────────────┐
-│ Maintenance Queue    │ Security Overview    │
-│ lg:col-span-1        │ lg:col-span-1        │
-│ (50%)                │ (50%)                │
-└──────────────────────┴──────────────────────┘
+
+ Maintenance Queue Security Overview 
+ lg:col-span-1 lg:col-span-1 
+ (50%) (50%) 
+
 Grid: grid-cols-1 gap-5 lg:grid-cols-2
 ```
 
 ### Row 4: Release & Repository Health
 ```
-┌──────────────────────────┬─────────────┐
-│ Release Assistant        │ Repository  │
-│ lg:col-span-2 (66.67%)   │ Health      │
-│                          │ lg:col-1    │
-│                          │ (33.33%)    │
-└──────────────────────────┴─────────────┘
+
+ Release Assistant Repository 
+ lg:col-span-2 (66.67%) Health 
+ lg:col-1 
+ (33.33%) 
+
 Grid: grid-cols-1 gap-5 lg:grid-cols-3
 ```
 
 ### Row 5: Contributor Opportunities
 ```
-┌─────────────────────────┐
-│ Contributor            │
-│ Opportunities (100%)    │
-└─────────────────────────┘
+
+ Contributor 
+ Opportunities (100%) 
+
 Grid: grid-cols-1 gap-5 (Full width)
 ```
 
@@ -142,14 +142,14 @@ All sections stack vertically in a single column:
 
 ```typescript
 // Container spacing
-px-6 py-10  // Horizontal and vertical padding
+px-6 py-10 // Horizontal and vertical padding
 
 // Section gaps
-gap-5       // 1.25rem (20px) between sections
-mb-8        // 2rem (32px) between major sections
+gap-5 // 1.25rem (20px) between sections
+mb-8 // 2rem (32px) between major sections
 
 // Internal component spacing
-p-6         // Padding inside cards
+p-6 // Padding inside cards
 space-y-2.5 // Vertical spacing for list items
 ```
 
@@ -178,41 +178,41 @@ space-y-2.5 // Vertical spacing for list items
 
 ```tsx
 <main>
-  {/* Section 1 */}
-  <section>
-    <MaintainerBriefing />
-  </section>
+ {/* Section 1 */}
+ <section>
+ <MaintainerBriefing />
+ </section>
 
-  {/* Section 2: Primary Row */}
-  <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-    <div className="lg:col-span-2">
-      <TodaysPriorities />
-    </div>
-    <div>
-      <MergeQueue />
-    </div>
-  </div>
+ {/* Section 2: Primary Row */}
+ <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+ <div className="lg:col-span-2">
+ <TodaysPriorities />
+ </div>
+ <div>
+ <MergeQueue />
+ </div>
+ </div>
 
-  {/* Section 3: Secondary Row */}
-  <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
-    <MaintenanceQueue />
-    <SecurityOverview />
-  </div>
+ {/* Section 3: Secondary Row */}
+ <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
+ <MaintenanceQueue />
+ <SecurityOverview />
+ </div>
 
-  {/* Section 4: Release Row */}
-  <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-    <div className="lg:col-span-2">
-      <ReleaseAssistant />
-    </div>
-    <div>
-      <RepositoryHealth />
-    </div>
-  </div>
+ {/* Section 4: Release Row */}
+ <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+ <div className="lg:col-span-2">
+ <ReleaseAssistant />
+ </div>
+ <div>
+ <RepositoryHealth />
+ </div>
+ </div>
 
-  {/* Section 5: Full Width */}
-  <div>
-    <ContributorOpportunities />
-  </div>
+ {/* Section 5: Full Width */}
+ <div>
+ <ContributorOpportunities />
+ </div>
 </main>
 ```
 
@@ -228,11 +228,11 @@ space-y-2.5 // Vertical spacing for list items
 ### Media Query Strategy
 ```css
 /* Mobile-first approach */
-.grid-cols-1           /* Default: 1 column */
-lg:grid-cols-2         /* At lg+: 2 columns */
-lg:grid-cols-3         /* At lg+: 3 columns */
-lg:col-span-1          /* At lg+: Take 1 column of parent */
-lg:col-span-2          /* At lg+: Take 2 columns of parent */
+.grid-cols-1 /* Default: 1 column */
+lg:grid-cols-2 /* At lg+: 2 columns */
+lg:grid-cols-3 /* At lg+: 3 columns */
+lg:col-span-1 /* At lg+: Take 1 column of parent */
+lg:col-span-2 /* At lg+: Take 2 columns of parent */
 ```
 
 ---
@@ -252,11 +252,11 @@ Potential responsive enhancements:
 
 ```tsx
 // Could add XL breakpoint for larger screens
-xl:grid-cols-4  // Four-column layout on very wide screens
+xl:grid-cols-4 // Four-column layout on very wide screens
 
 // Could add sticky sections
-sticky top-20   // Keep certain cards visible while scrolling
+sticky top-20 // Keep certain cards visible while scrolling
 
 // Could add compact view option
-data-view="compact"  // Toggle between detailed/compact layouts
+data-view="compact" // Toggle between detailed/compact layouts
 ```

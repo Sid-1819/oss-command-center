@@ -1,11 +1,7 @@
 import { createGoogle } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { LanguageModel } from "ai";
-import {
-  DEFAULT_MODELS,
-  SERVER_CHAIN_DEFAULTS,
-  type ChainProviderId,
-} from "@/lib/ai/types";
+import { DEFAULT_MODELS, type ChainProviderId } from "@/lib/ai/types";
 
 export interface LanguageModelSpec {
   provider: ChainProviderId;
@@ -13,33 +9,7 @@ export interface LanguageModelSpec {
   apiKey: string;
 }
 
-export function getServerProviderChain(): LanguageModelSpec[] {
-  const chain: LanguageModelSpec[] = [];
-
-  const googleKey = process.env.GOOGLE_API_KEY?.trim();
-  if (googleKey) {
-    chain.push({
-      provider: "gemini",
-      model: SERVER_CHAIN_DEFAULTS.gemini,
-      apiKey: googleKey,
-    });
-  }
-
-  const openRouterKey = process.env.OPENROUTER_API_KEY?.trim();
-  if (openRouterKey) {
-    chain.push({
-      provider: "openrouter",
-      model: SERVER_CHAIN_DEFAULTS.openrouter,
-      apiKey: openRouterKey,
-    });
-  }
-
-  return chain;
-}
-
-export function isServerChainConfigured(): boolean {
-  return getServerProviderChain().length > 0;
-}
+export { getServerProviderChain, isServerChainConfigured } from "@/lib/ai/router";
 
 export function createLanguageModel(
   spec: LanguageModelSpec,

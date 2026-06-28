@@ -1,6 +1,6 @@
 'use client';
 
-import { GitPullRequest, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
+import { GitPullRequest, CheckCircle2, AlertCircle, Lock, Check, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -124,14 +124,14 @@ export default function MergeQueue({
                         <div className="space-y-1">
                           {pr.reasons?.map((reason, i) => (
                             <div key={i} className="flex items-center gap-2 text-xs text-foreground">
-                              <span className="text-primary">✓</span>
+                              <Check className="size-3 text-primary shrink-0" />
                               <span>{reason}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                       <Button variant="default" size="sm" className="mt-2 w-full gap-2">
-                        <span>⚡</span>
+                        <Zap className="size-3" />
                         Merge
                       </Button>
                     </div>

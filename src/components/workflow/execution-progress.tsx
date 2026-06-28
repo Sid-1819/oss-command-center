@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader, AlertCircle } from 'lucide-react';
+import { Loader, AlertCircle, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import type { MaintenanceAction, ExecutionStep } from '@/types/execution-workflow';
@@ -80,7 +80,7 @@ export function ExecutionProgress({ action, isExecuting, onCancel }: ExecutionPr
               <div className="flex items-center justify-center size-6 shrink-0 mt-1">
                 {step.status === 'complete' && (
                   <div className="size-6 rounded-full bg-chart-3/20 flex items-center justify-center">
-                    <span className="text-chart-3">✓</span>
+                    <Check className="size-3.5 text-chart-3" />
                   </div>
                 )}
                 {step.status === 'running' && (
@@ -128,7 +128,7 @@ export function ExecutionProgress({ action, isExecuting, onCancel }: ExecutionPr
               <span className="text-primary">[2:45:33]</span> Validating 3 file changes
             </div>
             <div className="text-chart-3">
-              <span className="text-primary">[2:45:35]</span> ✓ Validation successful
+              <span className="text-primary">[2:45:35]</span> Validation successful
             </div>
             <div>
               <span className="text-primary">[2:45:36]</span> Running linter...

@@ -14,8 +14,6 @@ import type { MaintainerBriefing } from "@/types/maintainer-briefing";
 import type { RepositoryAnalysis } from "@/types/repository-analysis";
 import { AiConfigError } from "@/lib/ai/types";
 
-const PLAN_MODEL = "gemini-2.5-flash";
-
 function toActionError(error: AiConfigError): never {
   throw new MarkdownDocActionError(error.message, error.code, error.status);
 }
@@ -43,7 +41,6 @@ export async function generateMarkdownDocPlanFromContext(input: {
       systemInstruction: buildMarkdownDocSystemInstruction(input.targetFile),
       userPrompt: buildMarkdownDocActionPrompt(input),
       schema: markdownDocExecutionPlanSchema,
-      modelDefault: PLAN_MODEL,
     },
     onError: toActionError,
     onInvalidResponse: (reason) => {

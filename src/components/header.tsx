@@ -18,6 +18,7 @@ interface HeaderProps {
   activeRepository?: string;
   aiSettings?: React.ReactNode;
   demoMode?: boolean;
+  variant?: 'home' | 'workspace';
 }
 
 export default function Header({
@@ -29,8 +30,10 @@ export default function Header({
   activeRepository,
   aiSettings,
   demoMode = false,
+  variant = 'workspace',
 }: HeaderProps) {
   const isLoggedIn = user !== null;
+  const isHome = variant === 'home';
   const canAnalyze =
     isLoggedIn && repositoryRef.trim().length > 0 && !isAnalyzing;
 
@@ -57,21 +60,21 @@ export default function Header({
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-center px-2 md:max-w-md">
-          {isLoggedIn ? (
+          {!isLoggedIn ? (
+            <LoginButton />
+          ) : isHome ? null : (
             <RepositoryPicker
               value={repositoryRef}
               onSelect={onRepositoryRefChange}
               disabled={isAnalyzing || demoMode}
             />
-          ) : (
-            <LoginButton />
           )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
           {aiSettings}
           {isLoggedIn && user ? <UserMenu user={user} /> : null}
-          {activeRepository && (
+          {!isHome && activeRepository ? (
             <Badge
               variant="outline"
               className="hidden border-primary/30 bg-primary/5 text-primary sm:flex"
@@ -79,25 +82,27 @@ export default function Header({
               <span className="mr-1.5 size-1.5 rounded-full bg-primary animate-pulse" />
               {activeRepository}
             </Badge>
-          )}
-          <Button
-            size="sm"
-            onClick={onAnalyze}
-            disabled={!canAnalyze}
-            className="gap-2 bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
-          >
-            {isAnalyzing ? (
-              <>
-                <Spinner className="size-3.5" />
-                Analyzing…
-              </>
-            ) : (
-              <>
-                <Sparkles className="size-3.5" data-icon="inline-start" />
-                {demoMode ? 'Load demo' : 'Analyze'}
-              </>
-            )}
-          </Button>
+          ) : null}
+          {!isHome ? (
+            <Button
+              size="sm"
+              onClick={onAnalyze}
+              disabled={!canAnalyze}
+              className="gap-2 bg-primary text-primary-foreground shadow-md shadow-primary/20 hover:bg-primary/90"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Spinner className="size-3.5" />
+                  Analyzing…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="size-3.5" data-icon="inline-start" />
+                  {demoMode ? 'Load demo' : 'Analyze'}
+                </>
+              )}
+            </Button>
+          ) : null}
         </div>
       </div>
     </header>

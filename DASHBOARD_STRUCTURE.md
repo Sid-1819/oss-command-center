@@ -11,10 +11,10 @@ The maintainer dashboard has been revamped to follow a clear, action-oriented wo
 ### 1. **Maintainer Briefing** (Hero Section)
 - **Purpose**: AI-generated executive summary of repository status
 - **Includes**:
-  - Quick health score with status indicator
-  - Estimated time to address today's priorities
-  - Repository status (Active/Needs attention)
-  - High-priority item count
+ - Quick health score with status indicator
+ - Estimated time to address today's priorities
+ - Repository status (Active/Needs attention)
+ - High-priority item count
 - **Component**: `MaintainerBriefing`
 
 ---
@@ -24,19 +24,19 @@ The maintainer dashboard has been revamped to follow a clear, action-oriented wo
 #### **Today's Priorities** (Left - 2/3 width)
 - **Purpose**: Ranked list of today's critical tasks
 - **Features**:
-  - High, Medium, Low priority items
-  - Impact-based ranking
-  - Quick action buttons
-  - Visual priority indicators
+ - High, Medium, Low priority items
+ - Impact-based ranking
+ - Quick action buttons
+ - Visual priority indicators
 - **Component**: `TodaysPriorities`
 
 #### **Merge Queue** (Right - 1/3 width)
 - **Purpose**: Top 3 AI-prioritized pull requests
 - **Features**:
-  - PR title and author
-  - Priority level (urgent/high/medium)
-  - Review count
-  - Quick navigation to reviews
+ - PR title and author
+ - Priority level (urgent/high/medium)
+ - Review count
+ - Quick navigation to reviews
 - **Component**: `MergeQueue` *(New)*
 
 ---
@@ -46,19 +46,19 @@ The maintainer dashboard has been revamped to follow a clear, action-oriented wo
 #### **AI Maintenance Queue** (Left - 1/2 width)
 - **Purpose**: Automated maintenance tasks requiring human review
 - **Tasks Include**:
-  - README updates with AI suggestions
-  - CHANGELOG maintenance entries
-  - Release preparation checklist
-  - Build/CI configuration issues
+ - README updates with AI suggestions
+ - CHANGELOG maintenance entries
+ - Release preparation checklist
+ - Build/CI configuration issues
 - **Component**: `MaintenanceQueue` *(New)*
 
 #### **Security Overview** (Right - 1/2 width)
 - **Purpose**: Security vulnerabilities and compliance status
 - **Features**:
-  - Critical/High/Medium/Low severity indicators
-  - Outdated dependencies alert
-  - License compliance checks
-  - Security scanning status
+ - Critical/High/Medium/Low severity indicators
+ - Outdated dependencies alert
+ - License compliance checks
+ - Security scanning status
 - **Component**: `SecurityOverview` *(New)*
 
 ---
@@ -68,20 +68,20 @@ The maintainer dashboard has been revamped to follow a clear, action-oriented wo
 #### **Release Assistant** (Left - 2/3 width)
 - **Purpose**: Release management and versioning guidance
 - **Features**:
-  - Version bump recommendations
-  - Release notes suggestions
-  - Pre-release checklist
-  - Publishing guidance
+ - Version bump recommendations
+ - Release notes suggestions
+ - Pre-release checklist
+ - Publishing guidance
 - **Component**: `ReleaseAssistant`
 
 #### **Repository Health** (Right - 1/3 width)
 - **Purpose**: Key metrics and repository statistics
 - **Metrics**:
-  - Overall health score (0-100)
-  - Star count
-  - Fork count
-  - Open issues
-  - Open pull requests
+ - Overall health score (0-100)
+ - Star count
+ - Fork count
+ - Open issues
+ - Open pull requests
 - **Component**: `RepositoryHealth`
 
 ---
@@ -91,9 +91,9 @@ The maintainer dashboard has been revamped to follow a clear, action-oriented wo
 #### **Contributor Opportunities**
 - **Purpose**: Good-first-issue identification and community engagement
 - **Features**:
-  - Issues tagged as beginner-friendly
-  - Community contribution suggestions
-  - New contributor onboarding tips
+ - Issues tagged as beginner-friendly
+ - Community contribution suggestions
+ - New contributor onboarding tips
 - **Component**: `ContributorOpportunities`
 
 ---
@@ -105,7 +105,7 @@ The maintainer dashboard has been revamped to follow a clear, action-oriented wo
 #### **MergeQueue** (`merge-queue.tsx`)
 ```typescript
 interface MergeQueueProps extends DashboardSectionStateProps {
-  pullRequests?: number;
+ pullRequests?: number;
 }
 ```
 Shows the top 3 AI-prioritized pull requests with metadata.
@@ -113,9 +113,9 @@ Shows the top 3 AI-prioritized pull requests with metadata.
 #### **MaintenanceQueue** (`maintenance-queue.tsx`)
 ```typescript
 interface MaintenanceQueueProps extends DashboardSectionStateProps {
-  release?: MaintainerBriefing['release'];
-  documentation?: MaintainerBriefing['documentation'];
-  onUpdateReadme?: (suggestion: string) => void;
+ release?: MaintainerBriefing['release'];
+ documentation?: MaintainerBriefing['documentation'];
+ onUpdateReadme?: (suggestion: string) => void;
 }
 ```
 Aggregates README, CHANGELOG, and release tasks in one place.
@@ -123,7 +123,7 @@ Aggregates README, CHANGELOG, and release tasks in one place.
 #### **SecurityOverview** (`security-overview.tsx`)
 ```typescript
 interface SecurityOverviewProps extends DashboardSectionStateProps {
-  analysis?: RepositoryAnalysis;
+ analysis?: RepositoryAnalysis;
 }
 ```
 Displays security vulnerabilities and compliance issues.
@@ -135,9 +135,9 @@ Displays security vulnerabilities and compliance issues.
 ### Responsive Design
 - **Mobile (< 1024px)**: Single column, stacked sections
 - **Desktop (≥ 1024px)**: Multi-column grid layout
-  - Primary row: 2/3 + 1/3 split
-  - Secondary row: 1/2 + 1/2 split
-  - Tertiary row: 2/3 + 1/3 split
+ - Primary row: 2/3 + 1/3 split
+ - Secondary row: 1/2 + 1/2 split
+ - Tertiary row: 2/3 + 1/3 split
 
 ### Visual Hierarchy
 1. **Urgent** (Red/Destructive): Security issues, critical PRs
@@ -151,12 +151,12 @@ Displays security vulnerabilities and compliance issues.
 
 ```
 Dashboard (useClient)
-├── Header (Repository Selection)
-├── Maintainer Briefing (AI Summary)
-├── Today's Priorities + Merge Queue
-├── Maintenance Queue + Security Overview
-├── Release Assistant + Repository Health
-└── Contributor Opportunities
+ Header (Repository Selection)
+ Maintainer Briefing (AI Summary)
+ Today's Priorities + Merge Queue
+ Maintenance Queue + Security Overview
+ Release Assistant + Repository Health
+ Contributor Opportunities
 ```
 
 ### Key Props
@@ -171,9 +171,9 @@ Dashboard (useClient)
 
 ```tsx
 <MergeQueue
-  pullRequests={analysis?.repository.openPullRequests ?? 0}
-  isLoading={isAnalyzing}
-  isEmpty={isEmpty}
+ pullRequests={analysis?.repository.openPullRequests ?? 0}
+ isLoading={isAnalyzing}
+ isEmpty={isEmpty}
 />
 ```
 

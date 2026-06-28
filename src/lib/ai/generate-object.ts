@@ -14,10 +14,14 @@ import {
 } from "@/lib/ai/provider-chain";
 import { resolveAiConfig } from "@/lib/ai/resolve-ai-config";
 import {
+  getDefaultModelForProvider,
+  getTaskTypeForOperation,
+} from "@/lib/ai/router";
+import {
   AiConfigError,
-  SERVER_CHAIN_DEFAULTS,
   type AiOperation,
   type AiRequestConfig,
+  type ChainProviderId,
   type ProviderAttemptResult,
 } from "@/lib/ai/types";
 
@@ -45,11 +49,20 @@ export interface GenerateObjectResult<T> {
 }
 
 function resolveModelId(
-  provider: keyof typeof SERVER_CHAIN_DEFAULTS,
+  provider: ChainProviderId,
+  operation: AiOperation,
   override?: string,
   specModel?: string,
 ): string {
-  return override?.trim() || specModel?.trim() || SERVER_CHAIN_DEFAULTS[provider];
+  if (override?.trim()) {
+    return override.trim();
+  }
+
+  if (specModel?.trim()) {
+    return specModel.trim();
+  }
+
+  return getDefaultModelForProvider(provider, getTaskTypeForOperation(operation));
 }
 
 async function generateWithChain<T>(
@@ -57,7 +70,7 @@ async function generateWithChain<T>(
   correction?: string,
 ): Promise<GenerateObjectResult<T>> {
   const resolved = resolveAiConfig(input.aiConfig);
-  const targets = resolveModelTargets(resolved);
+  const targets = resolveModelTargets(resolved, input.operation);
   const prompt = correction ? `${input.prompt}\n\n${correction}` : input.prompt;
 
   if (targets.mode === "mock") {
@@ -81,6 +94,7 @@ async function generateWithChain<T>(
     const spec = targets.models[index]!;
     const modelId = resolveModelId(
       spec.provider,
+      input.operation,
       targets.modelOverride,
       spec.model,
     );
@@ -165,7 +179,7 @@ export async function streamStructuredObject<T>(
   provider: ProviderAttemptResult;
 }> {
   const resolved = resolveAiConfig(input.aiConfig);
-  const targets = resolveModelTargets(resolved);
+  const targets = resolveModelTargets(resolved, input.operation);
 
   if (targets.mode === "mock") {
     const fixture = MOCK_FIXTURES[input.operation];
@@ -199,6 +213,7 @@ export async function streamStructuredObject<T>(
     const spec = targets.models[index]!;
     const modelId = resolveModelId(
       spec.provider,
+      input.operation,
       targets.modelOverride,
       spec.model,
     );

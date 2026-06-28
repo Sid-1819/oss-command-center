@@ -105,7 +105,7 @@ export function PreflightChecks({ checks, isExpanded, onToggle }: PreflightCheck
           {failedCount === 0 && (
             <div className="rounded-lg bg-chart-3/5 border-2 border-chart-3/20 p-3 mt-4">
               <p className="text-sm text-chart-3 font-medium">
-                ✓ All checks passed. Ready to execute.
+                All checks passed. Ready to execute.
               </p>
             </div>
           )}
@@ -113,7 +113,7 @@ export function PreflightChecks({ checks, isExpanded, onToggle }: PreflightCheck
           {failedCount > 0 && (
             <div className="rounded-lg bg-destructive/10 border-2 border-destructive/30 p-3 mt-4">
               <p className="text-sm text-destructive font-medium">
-                ⚠ Some checks failed. Please review before executing.
+                Some checks failed. Please review before executing.
               </p>
             </div>
           )}

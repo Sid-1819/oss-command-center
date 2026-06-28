@@ -14,8 +14,6 @@ import type { AutoFixCandidate } from "@/types/maintainer-briefing";
 import type { RepositoryAnalysis } from "@/types/repository-analysis";
 import { AiConfigError } from "@/lib/ai/types";
 
-const PLAN_MODEL = "gemini-2.5-flash";
-
 function toActionError(error: AiConfigError): never {
   throw new IssueFixActionError(error.message, error.code, error.status);
 }
@@ -45,7 +43,6 @@ export async function generateIssueFixPlanFromContext(input: {
       systemInstruction: ISSUE_FIX_SYSTEM_INSTRUCTION,
       userPrompt: buildIssueFixActionPrompt(input),
       schema: issueFixExecutionPlanSchema,
-      modelDefault: PLAN_MODEL,
     },
     onError: toActionError,
     onInvalidResponse: (reason) => {

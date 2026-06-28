@@ -57,7 +57,7 @@ export function formatRateLimitMessage(
 
   if (provider === "gemini" && isDailyQuotaExceeded(message)) {
     return (
-      "Gemini API free tier daily limit reached (20 requests/day for gemini-2.5-flash). " +
+      "Gemini API free tier daily limit reached. " +
       "Try again tomorrow, use a different API key, or enable billing at ai.google.dev."
     );
   }

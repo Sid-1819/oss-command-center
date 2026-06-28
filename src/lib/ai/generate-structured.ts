@@ -6,22 +6,33 @@ import {
 import { generateStructuredObject } from "@/lib/ai/generate-object";
 import { resolveAiConfig, toAiRequestConfig } from "@/lib/ai/resolve-ai-config";
 import {
+  getPrimaryGeminiModel,
+  getTaskTypeForOperation,
+} from "@/lib/ai/router";
+import {
   AiConfigError,
   DEFAULT_MODELS,
+  type AiOperation,
   type AiRequestConfig,
   type StructuredJsonRequest,
 } from "@/lib/ai/types";
 
-function resolveModel(aiConfig: AiRequestConfig, modelDefault: string): string {
+function resolveModel(aiConfig: AiRequestConfig, operation: AiOperation): string {
   if (aiConfig.model?.trim()) {
     return aiConfig.model.trim();
   }
 
-  if (aiConfig.provider !== "mock" && aiConfig.provider !== "auto") {
-    return DEFAULT_MODELS[aiConfig.provider];
+  const taskType = getTaskTypeForOperation(operation);
+
+  if (aiConfig.provider === "gemini") {
+    return getPrimaryGeminiModel(taskType);
   }
 
-  return modelDefault;
+  if (aiConfig.provider === "openrouter") {
+    return DEFAULT_MODELS.openrouter;
+  }
+
+  return getPrimaryGeminiModel(taskType);
 }
 
 export interface GenerateStructuredJsonOptions<T = unknown> {
@@ -38,7 +49,7 @@ export async function generateStructuredJson<T>(
 ): Promise<T> {
   const resolvedConfig = resolveAiConfig(options.aiConfig);
   const aiConfig = toAiRequestConfig(resolvedConfig);
-  const model = resolveModel(aiConfig, options.request.modelDefault);
+  const model = resolveModel(aiConfig, options.request.operation);
   const fingerprint =
     options.cacheInputs &&
     buildCacheFingerprint(

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Zap, GitBranch, RotateCcw } from 'lucide-react';
+import { Zap, Loader2, Lock, RotateCcw, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,7 +80,7 @@ export function ExecutionControls({
           >
             {isExecuting ? (
               <>
-                <span className="animate-spin mr-2">⏳</span>
+                <Loader2 className="size-4 mr-2 animate-spin" />
                 Executing...
               </>
             ) : (
@@ -95,17 +95,17 @@ export function ExecutionControls({
         {/* Trust Indicators */}
         <div className="grid grid-cols-3 gap-2 pt-4 border-t border-border/30">
           <div className="rounded-lg bg-primary/5 border border-primary/10 p-3 text-center">
-            <p className="text-2xl">🔒</p>
+            <Lock className="size-6 mx-auto text-primary" />
             <p className="text-xs font-medium text-primary mt-1">Sandboxed</p>
             <p className="text-xs text-muted-foreground mt-0.5">Tested safely</p>
           </div>
           <div className="rounded-lg bg-chart-3/5 border border-chart-3/10 p-3 text-center">
-            <p className="text-2xl">↩️</p>
+            <RotateCcw className="size-6 mx-auto text-chart-3" />
             <p className="text-xs font-medium text-chart-3 mt-1">Reversible</p>
             <p className="text-xs text-muted-foreground mt-0.5">Can rollback</p>
           </div>
           <div className="rounded-lg bg-accent/5 border border-accent/10 p-3 text-center">
-            <p className="text-2xl">👁️</p>
+            <Eye className="size-6 mx-auto text-accent-foreground" />
             <p className="text-xs font-medium text-accent-foreground mt-1">Reviewable</p>
             <p className="text-xs text-muted-foreground mt-0.5">Create PR</p>
           </div>
@@ -114,7 +114,7 @@ export function ExecutionControls({
         {!canExecute && (
           <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3">
             <p className="text-sm text-destructive font-medium">
-              ⚠️ Cannot execute: Please fix failed pre-flight checks first.
+              Cannot execute: Please fix failed pre-flight checks first.
             </p>
           </div>
         )}

@@ -5,90 +5,90 @@
 ### BEFORE: Generic Analytics Layout
 
 ```
-┌─────────────────────────────────────────────┐
-│            MAINTAINER BRIEFING              │
-│  Health: 75 | Time: 30m | Status: Healthy  │
-└─────────────────────────────────────────────┘
 
-┌──────────────────────┬──────────────────────┐
-│  TODAY'S PRIORITIES  │  RELEASE ASSISTANT   │
-│  - High priority 1   │  Suggest v2.0 bump   │
-│  - Medium priority 2 │  Release notes prep  │
-│  - Low priority 3    │  Changelog entry     │
-└──────────────────────┴──────────────────────┘
+ MAINTAINER BRIEFING 
+ Health: 75 | Time: 30m | Status: Healthy 
 
-┌──────────────────────────────────────────────┐
-│      REPOSITORY HEALTH                       │
-│  Stars: 1.2K | Forks: 245 | Issues: 89     │
-└──────────────────────────────────────────────┘
 
-┌──────────────────┬──────────────────────────┐
-│  DOCUMENTATION   │  CONTRIBUTOR            │
-│  DRIFT           │  OPPORTUNITIES          │
-│                  │                          │
-└──────────────────┴──────────────────────────┘
+
+ TODAY'S PRIORITIES RELEASE ASSISTANT 
+ - High priority 1 Suggest v2.0 bump 
+ - Medium priority 2 Release notes prep 
+ - Low priority 3 Changelog entry 
+
+
+
+ REPOSITORY HEALTH 
+ Stars: 1.2K | Forks: 245 | Issues: 89 
+
+
+
+ DOCUMENTATION CONTRIBUTOR 
+ DRIFT OPPORTUNITIES 
+ 
+
 ```
 
 **Issues:**
-- ❌ No PR queue visibility
-- ❌ No security alerts
-- ❌ Mixed priorities and concerns
-- ❌ Unclear action hierarchy
-- ❌ Metrics-focused, not action-focused
+- No PR queue visibility
+- No security alerts
+- Mixed priorities and concerns
+- Unclear action hierarchy
+- Metrics-focused, not action-focused
 
 ---
 
 ### AFTER: Action-Oriented Maintainer Workflow
 
 ```
-┌───────────────────────────────────────────────────┐
-│         MAINTAINER BRIEFING (Hero)                │
-│  Summary | Health: 78/100 | Time: 45m | Active    │
-└───────────────────────────────────────────────────┘
 
-┌──────────────────────────────┬────────────────────┐
-│  TODAY'S PRIORITIES          │  MERGE QUEUE ⭐   │
-│  (What to do)                │  (PR Review Queue) │
-│  ┌────────────────────────┐ │ ┌────────────────┐ │
-│  │ 🔴 Fix auth bug        │ │ │ #123: Security │ │
-│  │ 🟡 Update docs         │ │ │ #124: Features │ │
-│  │ ⚫ Refactor utils      │ │ │ #125: Deps     │ │
-│  └────────────────────────┘ │ └────────────────┘ │
-└──────────────────────────────┴────────────────────┘
+ MAINTAINER BRIEFING (Hero) 
+ Summary | Health: 78/100 | Time: 45m | Active 
 
-┌──────────────────────────────┬────────────────────┐
-│  AI MAINTENANCE QUEUE        │  SECURITY OVERVIEW │
-│  (Automated tasks)           │  (Vulnerabilities) │
-│  ┌────────────────────────┐ │ ┌────────────────┐ │
-│  │ README: Add API docs   │ │ │ 🔴 8 vuln deps │ │
-│  │ CHANGELOG: v2.1 notes  │ │ │ 🟡 License     │ │
-│  │ RELEASE: v2.1.0 prep   │ │ │ 🟢 Scan OK     │ │
-│  └────────────────────────┘ │ └────────────────┘ │
-└──────────────────────────────┴────────────────────┘
 
-┌──────────────────────────────┬────────────────────┐
-│  RELEASE ASSISTANT           │  REPO HEALTH 📊   │
-│  (Planning & versioning)     │  (Metrics)         │
-│  ┌────────────────────────┐ │ ┌────────────────┐ │
-│  │ Version suggestion     │ │ │ ⭐ 1.2K        │ │
-│  │ Release notes draft    │ │ │ 🔀 245 Forks   │ │
-│  │ Checklist              │ │ │ 🐛 89 Issues   │ │
-│  └────────────────────────┘ │ └────────────────┘ │
-└──────────────────────────────┴────────────────────┘
 
-┌───────────────────────────────────────────────────┐
-│    CONTRIBUTOR OPPORTUNITIES (Community)          │
-│  Good first issues | Mentoring | Onboarding       │
-└───────────────────────────────────────────────────┘
+ TODAY'S PRIORITIES MERGE QUEUE 
+ (What to do) (PR Review Queue) 
+ 
+ [critical] Fix auth bug #123: Security 
+ [medium] Update docs #124: Features 
+ [low] Refactor utils #125: Deps 
+ 
+
+
+
+ AI MAINTENANCE QUEUE SECURITY OVERVIEW 
+ (Automated tasks) (Vulnerabilities) 
+ 
+ README: Add API docs [critical] 8 vuln deps 
+ CHANGELOG: v2.1 notes [medium] License 
+ RELEASE: v2.1.0 prep [ok] Scan OK 
+ 
+
+
+
+ RELEASE ASSISTANT REPO HEALTH 
+ (Planning & versioning) (Metrics) 
+ 
+ Version suggestion 1.2K 
+ Release notes draft 245 Forks 
+ Checklist 89 Issues 
+ 
+
+
+
+ CONTRIBUTOR OPPORTUNITIES (Community) 
+ Good first issues | Mentoring | Onboarding 
+
 ```
 
 **Improvements:**
-- ✅ Clear action-first hierarchy
-- ✅ PR review queue visibility
-- ✅ Security alerts prominent
-- ✅ Maintenance tasks aggregated
-- ✅ Information organized by urgency
-- ✅ Visual priority indicators (🔴🟡⚫🟢)
+- Clear action-first hierarchy
+- PR review queue visibility
+- Security alerts prominent
+- Maintenance tasks aggregated
+- Information organized by urgency
+- Visual priority indicators ([critical][medium][low][ok])
 
 ---
 
@@ -138,23 +138,23 @@
 ### BEFORE: Feature-Based Organization
 ```
 Features (What the tool can do)
-├── Briefing
-├── Priorities
-├── Release Assistant
-├── Repository Health
-├── Documentation Drift
-└── Contributor Opportunities
+ Briefing
+ Priorities
+ Release Assistant
+ Repository Health
+ Documentation Drift
+ Contributor Opportunities
 ```
 
 ### AFTER: Workflow-Based Organization
 ```
 Maintainer Workflow (What needs doing)
-├── Assess Status (Briefing + Health)
-├── Handle Urgent Work (Priorities + Merge Queue)
-├── Do Maintenance (Maintenance Queue)
-├── Manage Risk (Security Overview)
-├── Plan Ahead (Release Assistant)
-└── Nurture Community (Contributor Opportunities)
+ Assess Status (Briefing + Health)
+ Handle Urgent Work (Priorities + Merge Queue)
+ Do Maintenance (Maintenance Queue)
+ Manage Risk (Security Overview)
+ Plan Ahead (Release Assistant)
+ Nurture Community (Contributor Opportunities)
 ```
 
 ---
@@ -170,11 +170,11 @@ Maintainer Workflow (What needs doing)
 
 **AFTER:**
 - 5 clear hierarchy levels:
-  1. Maintainer Briefing (Executive summary)
-  2. Urgent action (Priorities + PRs)
-  3. Maintenance tasks (Docs + Security)
-  4. Planning (Release + Health)
-  5. Community (Contributions)
+ 1. Maintainer Briefing (Executive summary)
+ 2. Urgent action (Priorities + PRs)
+ 3. Maintenance tasks (Docs + Security)
+ 4. Planning (Release + Health)
+ 5. Community (Contributions)
 
 ### Color Usage
 
@@ -183,10 +183,10 @@ Maintainer Workflow (What needs doing)
 - Limited priority indicators
 
 **AFTER:**
-- 🔴 **Red/Destructive** - Critical/High priority
-- 🟡 **Orange/Secondary** - Medium priority
-- 🟢 **Green/Primary** - Healthy/Good
-- ⚫ **Gray/Muted** - Low priority/Informational
+- [critical] **Red/Destructive** - Critical/High priority
+- [medium] **Orange/Secondary** - Medium priority
+- [ok] **Green/Primary** - Healthy/Good
+- [low] **Gray/Muted** - Low priority/Informational
 
 ### Interactive Elements
 
@@ -248,10 +248,10 @@ The dashboard now organizes information by **what you need to do today**, not by
 5. **Metrics**: Check "Repository Health" for context
 
 ### New Capabilities?
-- ✨ Dedicated PR review queue visibility
-- ✨ Centralized security alerts
-- ✨ Aggregated maintenance tasks
-- ✨ Better prioritization by impact
+- Dedicated PR review queue visibility
+- Centralized security alerts
+- Aggregated maintenance tasks
+- Better prioritization by impact
 
 ---
 
@@ -292,9 +292,9 @@ The dashboard now organizes information by **what you need to do today**, not by
 The dashboard revamp transforms MaintainerOS from a **metrics viewer** into an **action coordinator** - helping open source maintainers see what matters and act on it with confidence.
 
 **Key Principles:**
-- 🎯 **Action-first** - What should I do?
-- 📊 **Transparent** - Why should I do it?
-- ⚡ **Urgent-first** - What's most critical?
-- 🤝 **Community-focused** - How can I help?
+- **Action-first** - What should I do?
+- **Transparent** - Why should I do it?
+- **Urgent-first** - What's most critical?
+- **Community-focused** - How can I help?
 
 This reflects the philosophy that maintainers deserve tools built for their workflow, not metrics dashboards designed by analytics teams.

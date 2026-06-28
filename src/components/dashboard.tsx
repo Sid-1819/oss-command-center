@@ -8,6 +8,7 @@ import { fetchRepositoryAnalysisAction } from '@/actions/fetchRepositoryAnalysis
 import AiSettingsSheet from '@/components/ai-settings-sheet';
 import { AiLoadingPanel } from '@/components/ai-loading-panel';
 import Header from '@/components/header';
+import DashboardHome from '@/components/dashboard-home';
 import MaintainerBriefing from '@/components/maintainer-briefing';
 import TodaysPriorities from '@/components/todays-priorities';
 import ReleaseAssistant from '@/components/release-assistant';
@@ -39,6 +40,7 @@ import AutoFixCandidates from '@/components/auto-fix-candidates';
 import { normalizeBriefing } from '@/lib/maintainer-briefing-utils';
 import type { DocPlanContext, IssuePlanContext } from '@/types/doc-plan-review';
 import { useAiStream } from '@/hooks/use-ai-stream';
+import { useRecentRepositories } from '@/hooks/use-recent-repositories';
 import { maintainerBriefingSchema } from '@/types/maintainer-briefing';
 import { trimAnalysisForClient } from '@/lib/repository-analysis-utils';
 import type { RepositoryAnalysis } from '@/types/repository-analysis';
@@ -48,6 +50,8 @@ interface DashboardProps {
   initialRepositoryRef?: string;
   demoMode?: boolean;
 }
+
+type DashboardPhase = 'idle' | 'ready' | 'loading' | 'error' | 'success';
 
 export default function Dashboard({
   user,
@@ -122,7 +126,32 @@ export default function Dashboard({
 
   const hasSuccessfulResult = result?.success === true;
   const hasError = result?.success === false;
-  const isEmpty = !hasSuccessfulResult && !isAnalyzing;
+  const trimmedRef = repositoryRef.trim();
+
+  const phase: DashboardPhase = isAnalyzing
+    ? 'loading'
+    : hasSuccessfulResult
+      ? 'success'
+      : hasError
+        ? 'error'
+        : trimmedRef
+          ? 'ready'
+          : 'idle';
+
+  const showHome = phase === 'idle' || phase === 'ready' || phase === 'error';
+  const showGrid = phase === 'success';
+  const canAnalyze =
+    user !== null && trimmedRef.length > 0 && !isAnalyzing;
+
+  const { recentRepos, recordRecent } = useRecentRepositories(user?.id);
+
+  useEffect(() => {
+    if (!hasSuccessfulResult || !user?.id) {
+      return;
+    }
+
+    recordRecent(result.repositoryRef);
+  }, [hasSuccessfulResult, result, user?.id, recordRecent]);
 
   useEffect(() => {
     if (!isAnalyzing) {
@@ -290,6 +319,7 @@ export default function Dashboard({
         activeRepository={hasSuccessfulResult ? result.repositoryRef : undefined}
         aiSettings={<AiSettingsSheet onSaved={handleAiConfigSaved} />}
         demoMode={demoMode}
+        variant={showHome ? 'home' : 'workspace'}
       />
 
       {demoMode ? (
@@ -374,13 +404,28 @@ export default function Dashboard({
         </div>
       ) : null}
 
+      {showHome && user ? (
+        <DashboardHome
+          user={user}
+          repositoryRef={repositoryRef}
+          onRepositoryRefChange={setRepositoryRef}
+          onAnalyze={() => void handleAnalyze()}
+          isAnalyzing={isAnalyzing}
+          canAnalyze={canAnalyze}
+          recentRepos={recentRepos}
+          onSelectRecent={setRepositoryRef}
+          demoMode={demoMode}
+        />
+      ) : null}
+
+      {showGrid ? (
       <main className="mx-auto w-full max-w-7xl px-6 py-10">
         <section className="mb-8">
           <MaintainerBriefing
             briefing={briefing}
             analyzedAt={hasSuccessfulResult ? result.analyzedAt : undefined}
             isLoading={isAnalyzing}
-            isEmpty={isEmpty}
+            isEmpty={false}
           />
         </section>
 
@@ -389,14 +434,14 @@ export default function Dashboard({
             <TodaysPriorities
               priorities={briefing?.priorities}
               isLoading={isAnalyzing}
-              isEmpty={isEmpty}
+              isEmpty={false}
             />
           </div>
           <div>
             <MergeQueue
               pullRequests={analysis?.repository.openPullRequests ?? 0}
               isLoading={isAnalyzing}
-              isEmpty={isEmpty}
+              isEmpty={false}
             />
           </div>
         </div>
@@ -406,10 +451,10 @@ export default function Dashboard({
             release={briefing?.release}
             documentation={briefing ? normalizeBriefing(briefing).documentation : undefined}
             isLoading={isAnalyzing}
-            isEmpty={isEmpty}
+            isEmpty={false}
             onUpdateDoc={hasSuccessfulResult ? (file, sugg) => void handleUpdateDoc(file, sugg) : undefined}
           />
-          <SecurityOverview analysis={analysis} isLoading={isAnalyzing} isEmpty={isEmpty} />
+          <SecurityOverview analysis={analysis} isLoading={isAnalyzing} isEmpty={false} />
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -417,7 +462,7 @@ export default function Dashboard({
             <ReleaseAssistant
               release={briefing?.release}
               isLoading={isAnalyzing}
-              isEmpty={isEmpty}
+              isEmpty={false}
             />
           </div>
           <div>
@@ -425,7 +470,7 @@ export default function Dashboard({
               analysis={analysis}
               briefing={briefing}
               isLoading={isAnalyzing}
-              isEmpty={isEmpty}
+              isEmpty={false}
             />
           </div>
         </div>
@@ -434,17 +479,18 @@ export default function Dashboard({
           <AutoFixCandidates
             briefing={briefing}
             isLoading={isAnalyzing}
-            isEmpty={isEmpty}
+            isEmpty={false}
             onReviewFix={hasSuccessfulResult ? (num) => void handleReviewFix(num) : undefined}
           />
           <ContributorOpportunities
             opportunities={briefing?.contributorOpportunities}
             issues={analysis?.issues}
             isLoading={isAnalyzing}
-            isEmpty={isEmpty}
+            isEmpty={false}
           />
         </div>
       </main>
+      ) : null}
     </div>
   );
 }

@@ -33,7 +33,6 @@ export interface StructuredJsonRequest {
   systemInstruction: string;
   userPrompt: string;
   schema: z.ZodType;
-  modelDefault: string;
   correction?: string;
 }
 
@@ -76,9 +75,4 @@ export const DEFAULT_MODELS: Record<
 > = {
   gemini: "gemini-2.5-flash",
   openrouter: "openrouter/free",
-};
-
-export const SERVER_CHAIN_DEFAULTS: Record<ChainProviderId, string> = {
-  gemini: DEFAULT_MODELS.gemini,
-  openrouter: DEFAULT_MODELS.openrouter,
 };
