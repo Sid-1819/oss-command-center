@@ -5,7 +5,7 @@ export const APP_PATH = "/app";
 
 export function getLoginUrl(callbackUrl: string = APP_PATH): string {
   const params = new URLSearchParams({ callbackUrl });
-  return `/api/auth/signin/github?${params.toString()}`;
+  return `/login?${params.toString()}`;
 }
 
 export class AuthError extends Error {

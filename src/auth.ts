@@ -15,6 +15,9 @@ const providers: NonNullable<NextAuthConfig["providers"]> = [
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
+  pages: {
+    signIn: "/login",
+  },
   session: {
     strategy: "jwt",
   },
