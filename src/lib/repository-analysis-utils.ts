@@ -1,4 +1,5 @@
 import { GITHUB_LIST_LIMIT } from "@/lib/github-limits";
+import { getSecurityIssuesFromAnalysis } from "@/lib/github/links";
 import { normalizeBriefing } from "@/lib/maintainer-briefing-utils";
 import type { MaintainerBriefing } from "@/types/maintainer-briefing";
 import type { RepositoryAnalysis } from "@/types/repository-analysis";
@@ -35,6 +36,7 @@ export function trimAnalysisForClient(
       (opportunity) => opportunity.issueNumber,
     ),
     ...normalized.autoFixCandidates.map((candidate) => candidate.issueNumber),
+    ...getSecurityIssuesFromAnalysis(analysis).map((issue) => issue.issueNumber),
   ]);
 
   return {

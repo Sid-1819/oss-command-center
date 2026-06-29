@@ -12,6 +12,10 @@ import {
 } from "@/lib/demo/mock-execution";
 import { AuthError, requireSession } from "@/lib/auth";
 import { createOctokit, getRepository } from "@/lib/github";
+import {
+  hasRepositoryPushAccess,
+  repositoryWriteAccessMessage,
+} from "@/lib/github/permissions";
 import { parseRepositoryRef } from "@/lib/parse-repository-ref";
 import type {
   ExecuteIssueFixActionInput,
@@ -109,6 +113,17 @@ export async function executeIssueFixAction(
         code: "GITHUB_FETCH",
         message: `Failed to fetch repository ${parsed.repositoryRef}`,
         status: 500,
+      },
+    };
+  }
+
+  if (!hasRepositoryPushAccess(repository.permissions)) {
+    return {
+      success: false,
+      error: {
+        code: "GITHUB_FETCH",
+        message: repositoryWriteAccessMessage(parsed.repositoryRef),
+        status: 403,
       },
     };
   }

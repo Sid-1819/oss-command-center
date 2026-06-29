@@ -12,12 +12,13 @@ import {
   getWorkflowContextTtlMs,
   type WorkflowStateKind,
 } from "@/lib/workflow-state/ttl";
+import { isDatabaseConfigured } from "@/lib/database/config";
 
 export class DatabaseNotConfiguredError extends Error {
   readonly code = "DATABASE_UNAVAILABLE" as const;
 
   constructor(
-    message = "DATABASE_URL is not configured. Set it in .env and run npm run db:push.",
+    message = "DATABASE_URL is not configured. Set it in .env and run npm run db:migrate.",
   ) {
     super(message);
     this.name = "DatabaseNotConfiguredError";
@@ -25,7 +26,7 @@ export class DatabaseNotConfiguredError extends Error {
 }
 
 export function assertDatabaseConfigured(): void {
-  if (!process.env.DATABASE_URL?.trim()) {
+  if (!isDatabaseConfigured()) {
     throw new DatabaseNotConfiguredError();
   }
 }
@@ -306,7 +307,7 @@ export async function deletePlanReview(
 
   await prisma.planReviewRecord.deleteMany({
     where: { userId, kind },
-  });
+  }).catch(() => undefined);
 }
 
 export async function upsertActionRunState(

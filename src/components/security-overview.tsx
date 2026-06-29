@@ -96,7 +96,7 @@ function renderSecurityIssue(
 
   if (href) {
     return (
-      <GitHubExternalLinkRow href={href} className={className}>
+      <GitHubExternalLinkRow href={href} variant="outline" className={className}>
         {content}
       </GitHubExternalLinkRow>
     );

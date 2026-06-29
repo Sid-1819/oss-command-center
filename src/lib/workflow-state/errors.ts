@@ -27,7 +27,7 @@ export function isWorkflowStateError(error: unknown): error is WorkflowStateErro
 
 export function workflowStateErrorMessage(error: WorkflowStateErrorPayload): string {
   if (error.code === "DATABASE_UNAVAILABLE") {
-    return "Database connection required. Set DATABASE_URL and run npm run db:push.";
+    return "Database connection required. Set DATABASE_URL and run npm run db:migrate.";
   }
 
   return error.message;

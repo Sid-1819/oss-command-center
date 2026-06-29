@@ -84,7 +84,8 @@ export default function RepositoryPicker({
           className="h-8 w-full max-w-md border-white/[0.08] bg-secondary/50 font-mono text-xs placeholder:font-sans"
         />
         <p className="text-center text-[11px] text-muted-foreground">
-          Dev login can analyze any public GitHub repository.
+          Dev login can analyze any public repo, but execution requires push access via{" "}
+          <code className="text-foreground">GITHUB_TOKEN</code>.
         </p>
       </div>
     );

@@ -516,6 +516,7 @@ export default function Dashboard({
             <TodaysPriorities
               priorities={briefing?.priorities}
               repository={analysis?.repository}
+              issues={analysis?.issues}
               isLoading={isAnalyzing}
               isEmpty={false}
             />

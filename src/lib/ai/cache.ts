@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { AiOperation, AiRequestConfig, ResolvedAiConfig } from "@/lib/ai/types";
 import { toAiRequestConfig } from "@/lib/ai/resolve-ai-config";
+import { isDatabaseConfigured } from "@/lib/database/config";
 
 const TTL_HOURS: Record<AiOperation, number> = {
   "maintainer-briefing": Number(process.env.AI_CACHE_BRIEFING_TTL_HOURS ?? 6),
@@ -52,7 +53,7 @@ export function getCacheTtlMs(operation: AiOperation): number {
 }
 
 export function isCacheEnabled(): boolean {
-  return Boolean(process.env.DATABASE_URL?.trim());
+  return isDatabaseConfigured();
 }
 
 export async function getCachedResponse<T>(

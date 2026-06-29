@@ -1,5 +1,9 @@
 import { createOctokit } from "@/lib/github";
 import { GitHubServiceError } from "@/lib/github/errors";
+import {
+  isPersonalAccessTokenForbidden,
+  personalAccessTokenForbiddenMessage,
+} from "@/lib/github/permissions";
 import { RequestError } from "@octokit/request-error";
 
 const MAX_BRANCH_RETRIES = 3;
@@ -74,6 +78,16 @@ async function createBranchOnce(
     }
 
     if (error instanceof RequestError) {
+      const repositoryRef = `${params.owner}/${params.repo}`;
+
+      if (isPersonalAccessTokenForbidden(error)) {
+        throw new GitHubServiceError(
+          personalAccessTokenForbiddenMessage(repositoryRef),
+          "API_ERROR",
+          403,
+        );
+      }
+
       throw new GitHubServiceError(
         error.message || `Failed to create branch ${params.branch}`,
         error.status === 422 ? "BRANCH_EXISTS" : "API_ERROR",

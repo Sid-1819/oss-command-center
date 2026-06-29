@@ -36,12 +36,12 @@ export function parsePrimaryGitHubReference(
 ): GitHubReference | null {
   const text = `${title} ${reason ?? ""}`;
 
-  const pullMatch = text.match(/\b(?:pr|pull request)\s*#(\d+)\b/i);
+  const pullMatch = text.match(/\b(?:pr|pull request)\s*#?(\d+)\b/i);
   if (pullMatch) {
     return { type: "pull", number: Number.parseInt(pullMatch[1], 10) };
   }
 
-  const issueMatch = text.match(/\b(?:issue|bug)\s*#(\d+)\b/i);
+  const issueMatch = text.match(/\b(?:issue|bug)\s*#?(\d+)\b/i);
   if (issueMatch) {
     return { type: "issue", number: Number.parseInt(issueMatch[1], 10) };
   }
@@ -49,6 +49,32 @@ export function parsePrimaryGitHubReference(
   const hashMatch = text.match(/#(\d+)\b/);
   if (hashMatch) {
     return { type: "issue", number: Number.parseInt(hashMatch[1], 10) };
+  }
+
+  return null;
+}
+
+export function resolvePriorityGitHubUrl(
+  title: string,
+  reason: string,
+  owner: string,
+  repo: string,
+  issues: RepositoryAnalysis["issues"] = [],
+): string | null {
+  const reference = parsePrimaryGitHubReference(title, reason);
+  if (reference) {
+    return resolveGitHubUrl(owner, repo, reference);
+  }
+
+  const text = `${title} ${reason}`.toLowerCase();
+  for (const issue of issues) {
+    if (
+      text.includes(`#${issue.number}`) ||
+      text.includes(`issue ${issue.number}`) ||
+      text.includes(`issue #${issue.number}`)
+    ) {
+      return buildGitHubIssueUrl(owner, repo, issue.number);
+    }
   }
 
   return null;

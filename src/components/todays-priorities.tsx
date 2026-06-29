@@ -12,10 +12,7 @@ import {
 import { PreviewListDialog } from '@/components/preview-list-dialog';
 import { GitHubExternalLinkRow } from '@/components/github-external-link-row';
 import { cn } from '@/lib/utils';
-import {
-  parsePrimaryGitHubReference,
-  resolveGitHubUrl,
-} from '@/lib/github/links';
+import { resolvePriorityGitHubUrl } from '@/lib/github/links';
 import type { MaintainerBriefing } from '@/types/maintainer-briefing';
 import type { RepositoryAnalysis } from '@/types/repository-analysis';
 
@@ -43,6 +40,7 @@ const priorityConfig = {
 interface TodaysPrioritiesProps extends DashboardSectionStateProps {
   priorities?: MaintainerBriefing['priorities'];
   repository?: RepositoryAnalysis['repository'];
+  issues?: RepositoryAnalysis['issues'];
 }
 
 function TodaysPrioritiesSkeleton() {
@@ -58,6 +56,7 @@ function TodaysPrioritiesSkeleton() {
 export default function TodaysPriorities({
   priorities = [],
   repository,
+  issues = [],
   isLoading,
   isEmpty,
 }: TodaysPrioritiesProps) {
@@ -96,13 +95,15 @@ export default function TodaysPriorities({
             renderItem={(item, index) => {
               const config = priorityConfig[item.priority];
               const Icon = config.icon;
-              const reference = repository
-                ? parsePrimaryGitHubReference(item.title, item.reason)
+              const href = repository
+                ? resolvePriorityGitHubUrl(
+                    item.title,
+                    item.reason,
+                    repository.owner,
+                    repository.name,
+                    issues,
+                  )
                 : null;
-              const href =
-                repository && reference
-                  ? resolveGitHubUrl(repository.owner, repository.name, reference)
-                  : null;
 
               const content = (
                 <>

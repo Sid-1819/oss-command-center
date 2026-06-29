@@ -54,6 +54,14 @@
       "author": "maintainer",
       "labels": ["release"],
       "createdAt": "2026-06-05T16:00:00Z"
+    },
+    {
+      "number": 45,
+      "title": "SQL injection in search filter",
+      "author": "security-bot",
+      "labels": ["security", "high"],
+      "createdAt": "2026-06-12T10:00:00Z",
+      "body": "User input is not sanitized in the search API endpoint."
     }
   ]
 }
