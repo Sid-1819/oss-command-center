@@ -16,9 +16,7 @@ export function repositoryWriteAccessMessage(repositoryRef: string): string {
   return [
     `Your GitHub token cannot push to ${repositoryRef}.`,
     "Execution creates a branch, commits changes, and opens a pull request.",
-    "For dev login, set GITHUB_TOKEN to a classic PAT with the repo scope,",
-    "or a fine-grained PAT with Contents: Read and write on this repository.",
-    "If the repo belongs to an organization, authorize the token for SSO.",
+    "Sign in with GitHub and grant repo access, or use a token with Contents: Read and write on this repository.",
   ].join(" ");
 }
 

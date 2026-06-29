@@ -15,7 +15,7 @@ export default function LoginButton({ callbackUrl = APP_PATH }: LoginButtonProps
         variant="outline"
         className="gap-2 border-white/[0.08] bg-secondary/50"
       >
-        Continue with GitHub
+        Sign in
       </Button>
     </form>
   );

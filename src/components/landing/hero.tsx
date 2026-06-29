@@ -34,15 +34,12 @@ export default function Hero() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-20">
-          <Link href={`${loginUrl}&provider=github`} className="inline-flex items-center justify-center px-8 py-3.5 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/20 group">
-            Continue with GitHub
-            <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-all" />
-          </Link>
           <Link
             href={loginUrl}
-            className="px-6 py-3.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
+            className="inline-flex items-center justify-center px-8 py-3.5 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-all hover:shadow-lg hover:shadow-primary/20 group"
           >
-            Developer login
+            Continue with GitHub
+            <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-all" />
           </Link>
         </div>
 

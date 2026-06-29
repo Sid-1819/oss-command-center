@@ -34,7 +34,6 @@ export default function Header({
 }: HeaderProps) {
   const isLoggedIn = user !== null;
   const isHome = variant === 'home';
-  const allowAnyRepository = user?.canAnalyzeAnyRepository ?? false;
   const canAnalyze =
     isLoggedIn && repositoryRef.trim().length > 0 && !isAnalyzing;
 
@@ -64,12 +63,11 @@ export default function Header({
           {!isLoggedIn ? (
             <LoginButton />
           ) : isHome ? null : (
-            <RepositoryPicker
-              value={repositoryRef}
-              onSelect={onRepositoryRefChange}
-              disabled={isAnalyzing || demoMode}
-              allowAnyRepository={allowAnyRepository}
-            />
+        <RepositoryPicker
+          value={repositoryRef}
+          onSelect={onRepositoryRefChange}
+          disabled={isAnalyzing || demoMode}
+        />
           )}
         </div>
 

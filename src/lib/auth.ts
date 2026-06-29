@@ -2,10 +2,10 @@ import type { Session } from "next-auth";
 import { auth } from "@/auth";
 
 export const APP_PATH = "/app";
-export const LOGIN_PATH = "/login";
 
 export function getLoginUrl(callbackUrl: string = APP_PATH): string {
-  return `${LOGIN_PATH}?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  const params = new URLSearchParams({ callbackUrl });
+  return `/api/auth/signin/github?${params.toString()}`;
 }
 
 export class AuthError extends Error {
@@ -24,11 +24,6 @@ export interface ClientSessionUser {
   email: string | null | undefined;
   image: string | null | undefined;
   username: string;
-  canAnalyzeAnyRepository: boolean;
-}
-
-export function isDevTokenSession(session: Session | null): boolean {
-  return session?.authProvider === "dev-token";
 }
 
 export async function getSession() {
@@ -37,19 +32,7 @@ export async function getSession() {
 
 export async function getGitHubAccessToken(): Promise<string | undefined> {
   const session = await auth();
-
-  if (session?.accessToken) {
-    return session.accessToken;
-  }
-
-  if (
-    process.env.NODE_ENV === "development" &&
-    process.env.GITHUB_TOKEN?.trim()
-  ) {
-    return process.env.GITHUB_TOKEN.trim();
-  }
-
-  return undefined;
+  return session?.accessToken;
 }
 
 export async function requireSession() {
@@ -73,6 +56,5 @@ export function toClientSession(session: Session | null): ClientSessionUser | nu
     email: session.user.email,
     image: session.user.image,
     username: session.user.username,
-    canAnalyzeAnyRepository: session.authProvider === "dev-token",
   };
 }
