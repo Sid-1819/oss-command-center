@@ -7,12 +7,14 @@ import { cn } from '@/lib/utils';
 interface GitHubExternalLinkRowProps {
   href: string;
   className?: string;
+  variant?: 'default' | 'outline';
   children: ReactNode;
 }
 
 export function GitHubExternalLinkRow({
   href,
   className,
+  variant = 'default',
   children,
 }: GitHubExternalLinkRowProps) {
   return (
@@ -20,7 +22,11 @@ export function GitHubExternalLinkRow({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={cn('group list-item-interactive block', className)}
+      className={cn(
+        'group block',
+        variant === 'outline' ? 'dashboard-list-item' : 'list-item-interactive',
+        className,
+      )}
     >
       <div className="flex items-start gap-3">
         {children}

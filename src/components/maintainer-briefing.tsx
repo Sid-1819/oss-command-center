@@ -62,7 +62,7 @@ export default function MaintainerBriefing({
   const isHealthy = healthScore >= 70;
 
   return (
-    <Card className="glass-panel section-glow overflow-visible border-0 [--card-spacing:--spacing(6)]">
+    <Card className="dashboard-section-card section-glow overflow-visible [--card-spacing:--spacing(6)]">
       <CardHeader className="pb-0">
         <SectionHeader
           icon={<Sparkles className="size-4" />}
@@ -72,7 +72,7 @@ export default function MaintainerBriefing({
             analyzedAt ? (
               <Badge
                 variant="outline"
-                className="shrink-0 gap-1.5 border-white/[0.08] bg-secondary/50 text-muted-foreground"
+                className="shrink-0 gap-1.5 border-white/[0.08] text-muted-foreground"
               >
                 <Calendar className="size-3" />
                 {formatDistanceToNow(new Date(analyzedAt), { addSuffix: true })}
@@ -89,14 +89,14 @@ export default function MaintainerBriefing({
           <DashboardEmptyState />
         ) : (
           <>
-            <div className="mb-8 rounded-xl bg-gradient-to-br from-primary/5 via-transparent to-chart-2/5 p-5 ring-1 ring-white/[0.06]">
+            <div className="mb-8 rounded-xl border border-border p-5">
               <p className="text-[15px] leading-relaxed text-foreground/90">
                 {briefing.summary}
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="metric-tile">
+              <div className="dashboard-metric-tile p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
                     <Bot className="size-4 text-primary" />
@@ -113,7 +113,7 @@ export default function MaintainerBriefing({
                 </p>
               </div>
 
-              <div className="metric-tile">
+              <div className="dashboard-metric-tile p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-chart-2/10 ring-1 ring-chart-2/20">
                     <Clock className="size-4 text-chart-2" />
@@ -135,7 +135,7 @@ export default function MaintainerBriefing({
                 </p>
               </div>
 
-              <div className="metric-tile">
+              <div className="dashboard-metric-tile p-5">
                 <div className="mb-3 flex items-center gap-2">
                   <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-primary/20">
                     <Zap className="size-4 text-primary" />

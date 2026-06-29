@@ -15,7 +15,6 @@ export default function Hero() {
       <div className="relative max-w-4xl mx-auto text-center">
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full bg-white/5 border border-primary/30 text-sm text-primary font-medium">
-          <Sparkles className="w-3.5 h-3.5" />
           Introducing MaintainerOS
         </div>
 

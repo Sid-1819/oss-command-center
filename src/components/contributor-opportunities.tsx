@@ -43,7 +43,7 @@ export default function ContributorOpportunities({
   );
 
   return (
-    <Card className="glass-panel glass-panel-hover border-0">
+    <Card className="dashboard-section-card">
       <CardHeader>
         <SectionHeader
           icon={<Users className="size-4" />}
@@ -51,7 +51,7 @@ export default function ContributorOpportunities({
           description="Beginner-friendly issues to invite contributors"
           action={
             opportunities.length > 0 ? (
-              <Badge variant="outline" className="gap-1 border-white/[0.08] bg-secondary/50">
+              <Badge variant="outline" className="gap-1 border-white/[0.08]">
                 <Code2 className="size-3" />
                 {opportunities.length} open
               </Badge>
@@ -90,7 +90,7 @@ export default function ContributorOpportunities({
               const content = (
                 <div className="min-w-0 flex-1">
                   <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="rounded-md bg-secondary px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground ring-1 ring-white/[0.06]">
+                    <span className="rounded-md px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground ring-1 ring-foreground/6">
                       #{opportunity.issueNumber}
                     </span>
                     <h3 className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
@@ -104,10 +104,10 @@ export default function ContributorOpportunities({
               );
 
               if (href) {
-                return <GitHubExternalLinkRow href={href}>{content}</GitHubExternalLinkRow>;
+                return <GitHubExternalLinkRow href={href} variant="outline">{content}</GitHubExternalLinkRow>;
               }
 
-              return <div className="list-item-interactive">{content}</div>;
+              return <div className="dashboard-list-item cursor-pointer">{content}</div>;
             }}
           />
         )}

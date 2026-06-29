@@ -28,7 +28,7 @@ export default function AutoFixCandidates({
   const candidates = briefing ? normalizeBriefing(briefing).autoFixCandidates : [];
 
   return (
-    <Card className="glass-panel glass-panel-hover border-0">
+    <Card className="dashboard-section-card">
       <CardHeader>
         <SectionHeader
           icon={<Wrench className="size-4" />}
@@ -61,7 +61,7 @@ export default function AutoFixCandidates({
               <div
                 role={onReviewFix ? 'button' : undefined}
                 tabIndex={onReviewFix ? 0 : undefined}
-                className="group list-item-interactive cursor-pointer border-l-2 border-l-primary/40"
+                className="group dashboard-list-item cursor-pointer border-l-2 border-l-primary/40"
                 onClick={onReviewFix ? () => onReviewFix(candidate.issueNumber) : undefined}
                 onKeyDown={
                   onReviewFix
@@ -88,7 +88,7 @@ export default function AutoFixCandidates({
                     {candidate.suggestedFiles[0] ? (
                       <p className="mt-1 text-xs text-muted-foreground/80">
                         Target:{' '}
-                        <code className="rounded bg-muted px-1">{candidate.suggestedFiles[0]}</code>
+                        <code className="rounded px-1 ring-1 ring-foreground/6">{candidate.suggestedFiles[0]}</code>
                       </p>
                     ) : null}
                   </div>

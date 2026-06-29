@@ -91,7 +91,7 @@ export default function RepositoryHealth({
     : [];
 
   return (
-    <Card className="glass-panel glass-panel-hover border-0">
+    <Card className="dashboard-section-card">
       <CardHeader>
         <SectionHeader
           icon={<Activity className="size-4" />}
@@ -108,7 +108,7 @@ export default function RepositoryHealth({
         ) : (
           <div className="space-y-2">
             {metrics.map((metric) => (
-              <div key={metric.label} className="metric-tile !p-3.5">
+              <div key={metric.label} className="dashboard-metric-tile !p-3.5">
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(

@@ -62,7 +62,7 @@ export default function TodaysPriorities({
   isEmpty,
 }: TodaysPrioritiesProps) {
   return (
-    <Card className="glass-panel glass-panel-hover border-0">
+    <Card className="dashboard-section-card">
       <CardHeader>
         <SectionHeader
           icon={<ListTodo className="size-4" />}
@@ -70,7 +70,7 @@ export default function TodaysPriorities({
           description="Ranked by impact and urgency"
           action={
             priorities.length > 0 ? (
-              <Badge variant="outline" className="border-white/[0.08] bg-secondary/50 tabular-nums">
+              <Badge variant="outline" className="border-white/[0.08] tabular-nums">
                 {priorities.length} items
               </Badge>
             ) : undefined
@@ -106,7 +106,7 @@ export default function TodaysPriorities({
 
               const content = (
                 <>
-                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-white/[0.06]">
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-foreground/6">
                     <Icon className="size-4 text-muted-foreground" />
                   </div>
 
@@ -129,14 +129,18 @@ export default function TodaysPriorities({
 
               if (href) {
                 return (
-                  <GitHubExternalLinkRow href={href} className={cn('border-l-2', config.accent)}>
+                  <GitHubExternalLinkRow
+                    href={href}
+                    variant="outline"
+                    className={cn('border-l-2', config.accent)}
+                  >
                     {content}
                   </GitHubExternalLinkRow>
                 );
               }
 
               return (
-                <div className={cn('list-item-interactive border-l-2', config.accent)}>
+                <div className={cn('dashboard-list-item cursor-pointer border-l-2', config.accent)}>
                   <div className="flex items-start gap-3">{content}</div>
                 </div>
               );

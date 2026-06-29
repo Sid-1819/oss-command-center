@@ -94,7 +94,7 @@ export default function MaintenanceQueue({
   const taskCount = isEmpty ? 0 : maintenanceTasks.length;
 
   return (
-    <Card className="glass-panel glass-panel-hover border-0">
+    <Card className="dashboard-section-card">
       <CardHeader>
         <SectionHeader
           icon={<Wrench className="size-4" />}
@@ -102,7 +102,7 @@ export default function MaintenanceQueue({
           description="Documentation and release tasks"
           action={
             taskCount > 0 ? (
-              <Badge variant="outline" className="border-white/[0.08] bg-secondary/50 tabular-nums">
+              <Badge variant="outline" className="border-white/[0.08] tabular-nums">
                 {taskCount} tasks
               </Badge>
             ) : undefined
@@ -124,7 +124,7 @@ export default function MaintenanceQueue({
               <div
                 role={task.actionCallback ? 'button' : undefined}
                 tabIndex={task.actionCallback ? 0 : undefined}
-                className={`group list-item-interactive border-l-2 border-l-chart-2/40${
+                className={`group dashboard-list-item border-l-2 border-l-chart-2/40${
                   task.actionCallback ? ' cursor-pointer' : ''
                 }`}
                 onClick={task.actionCallback ? task.actionCallback : undefined}
@@ -140,7 +140,7 @@ export default function MaintenanceQueue({
                 }
               >
                 <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary ring-1 ring-white/[0.06]">
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-foreground/6">
                     {task.icon}
                   </div>
 
