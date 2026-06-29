@@ -1,8 +1,5 @@
-export function getDashboardHref(
-  repositoryRef?: string,
-  options?: { demoMode?: boolean },
-): string {
-  const base = options?.demoMode ? "/app/demo" : "/app";
+export function getDashboardHref(repositoryRef?: string): string {
+  const base = "/app";
   const trimmed = repositoryRef?.trim();
 
   if (!trimmed) {

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
-import { analyzeRepositoryDashboard } from '@/actions/analyzeRepositoryDashboard';
 import { fetchRepositoryAnalysisAction } from '@/actions/fetchRepositoryAnalysis';
 import AiSettingsSheet from '@/components/ai-settings-sheet';
 import { AiLoadingPanel } from '@/components/ai-loading-panel';
@@ -53,7 +52,6 @@ import type { RepositoryAnalysis } from '@/types/repository-analysis';
 interface DashboardProps {
   user: ClientSessionUser | null;
   initialRepositoryRef?: string;
-  demoMode?: boolean;
 }
 
 type DashboardPhase = 'idle' | 'ready' | 'loading' | 'error' | 'success';
@@ -61,7 +59,6 @@ type DashboardPhase = 'idle' | 'ready' | 'loading' | 'error' | 'success';
 export default function Dashboard({
   user,
   initialRepositoryRef = '',
-  demoMode = false,
 }: DashboardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,12 +82,12 @@ export default function Dashboard({
     async (session: DashboardSession) => {
       try {
         await saveDashboardSession(session);
-        router.replace(getDashboardHref(session.repositoryRef, { demoMode }), { scroll: false });
+        router.replace(getDashboardHref(session.repositoryRef), { scroll: false });
       } catch {
         // Keep the dashboard usable even if persistence fails.
       }
     },
-    [demoMode, router],
+    [router],
   );
 
   const { submit: submitBriefing, object: streamingBriefing } = useAiStream({
@@ -132,7 +129,7 @@ export default function Dashboard({
       pendingAnalysisRef.current = null;
       setIsAnalyzing(false);
       if (nextResult.success) {
-        await persistDashboardSession({ ...nextResult, demoMode });
+        await persistDashboardSession({ ...nextResult });
       }
     },
     onError: (error) => {
@@ -187,10 +184,6 @@ export default function Dashboard({
           return;
         }
 
-        if (!!session.demoMode !== demoMode) {
-          return;
-        }
-
         if (repoFromUrl && repoFromUrl !== session.repositoryRef) {
           return;
         }
@@ -217,7 +210,7 @@ export default function Dashboard({
     return () => {
       cancelled = true;
     };
-  }, [demoMode, repoFromUrl, user]);
+  }, [repoFromUrl, user]);
 
   useEffect(() => {
     if (!hasSuccessfulResult || !user?.id) {
@@ -255,7 +248,7 @@ export default function Dashboard({
       return;
     }
 
-    if (!demoMode && !isAiConfigReady(aiConfig)) {
+    if (!isAiConfigReady(aiConfig)) {
       setShowSettingsPrompt(true);
       return;
     }
@@ -265,21 +258,6 @@ export default function Dashboard({
     setResult(null);
 
     try {
-      if (demoMode) {
-        const nextResult = await analyzeRepositoryDashboard({
-          repositoryRef: trimmedRef,
-          aiConfig: { provider: 'mock' },
-          forceRefresh: true,
-          demoMode: true,
-        });
-        setResult(nextResult);
-        setIsAnalyzing(false);
-        if (nextResult.success) {
-          await persistDashboardSession({ ...nextResult, demoMode });
-        }
-        return;
-      }
-
       const fetchResult = await fetchRepositoryAnalysisAction(trimmedRef);
 
       if (!fetchResult.success) {
@@ -336,14 +314,13 @@ export default function Dashboard({
         analysis: result.analysis,
         briefing: result.briefing,
         analyzedAt: result.analyzedAt,
-        aiConfig: demoMode ? { provider: 'mock' } : aiConfig,
-        demoMode,
+        aiConfig,
       };
 
       await saveDocPlanContext(context);
 
       router.push(
-        `/app/doc?repo=${encodeURIComponent(result.repositoryRef)}&file=${encodeURIComponent(targetFile)}&suggestion=${encodeURIComponent(suggestion)}${demoMode ? '&demo=1' : ''}`,
+        `/app/doc?repo=${encodeURIComponent(result.repositoryRef)}&file=${encodeURIComponent(targetFile)}&suggestion=${encodeURIComponent(suggestion)}`,
       );
     } catch (error) {
       setWorkflowError(
@@ -366,14 +343,13 @@ export default function Dashboard({
         analysis: result.analysis,
         briefing: result.briefing,
         analyzedAt: result.analyzedAt,
-        aiConfig: demoMode ? { provider: 'mock' } : aiConfig,
-        demoMode,
+        aiConfig,
       };
 
       await saveIssuePlanContext(context);
 
       router.push(
-        `/app/issue?repo=${encodeURIComponent(result.repositoryRef)}&issue=${encodeURIComponent(String(issueNumber))}${demoMode ? '&demo=1' : ''}&analyze=1`,
+        `/app/issue?repo=${encodeURIComponent(result.repositoryRef)}&issue=${encodeURIComponent(String(issueNumber))}&analyze=1`,
       );
     } catch (error) {
       setWorkflowError(
@@ -392,29 +368,10 @@ export default function Dashboard({
         onRepositoryRefChange={setRepositoryRef}
         onAnalyze={() => void handleAnalyze()}
         isAnalyzing={isAnalyzing}
-        activeRepository={
-          isAnalyzing && trimmedRef
-            ? trimmedRef
-            : hasSuccessfulResult
-              ? result.repositoryRef
-              : undefined
-        }
+        hasAnalysisResult={hasSuccessfulResult}
         aiSettings={<AiSettingsSheet onSaved={handleAiConfigSaved} />}
-        demoMode={demoMode}
         variant={showGrid ? 'workspace' : 'home'}
       />
-
-      {demoMode ? (
-        <div className="mx-auto w-full max-w-7xl px-6 pt-4">
-          <Alert className="border-primary/30 bg-primary/5">
-            <AlertTitle>Demo mode</AlertTitle>
-            <AlertDescription>
-              Fixture data only — no GitHub or AI API calls. Try doc updates and auto-fix flows
-              end-to-end.
-            </AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
 
       {workflowError ? (
         <div className="mx-auto w-full max-w-7xl px-6 pt-4">
@@ -433,8 +390,7 @@ export default function Dashboard({
             <AlertTitle>AI provider required</AlertTitle>
             <AlertDescription className="flex flex-wrap items-center gap-2">
               <span>
-                Choose MaintainerOS AI for analysis. In local development you can switch to demo
-                fixtures or your own provider key in settings.
+                Choose MaintainerOS AI for analysis, or connect your own provider in settings.
               </span>
               <AiSettingsSheet onSaved={handleAiConfigSaved} />
             </AlertDescription>
@@ -458,9 +414,7 @@ export default function Dashboard({
             message={
               isRestoringSession
                 ? 'Restoring your workspace…'
-                : demoMode
-                  ? 'Loading demo briefing…'
-                  : 'Fetching GitHub data and generating AI briefing…'
+                : 'Fetching GitHub data and generating AI briefing…'
             }
             repositoryRef={trimmedRef || undefined}
             elapsedSeconds={isAnalyzing ? elapsedSeconds : undefined}
@@ -473,19 +427,6 @@ export default function Dashboard({
         </main>
       ) : null}
 
-      {hasSuccessfulResult ? (
-        <div className="mx-auto flex w-full max-w-7xl justify-end px-6 pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void handleAnalyze()}
-            disabled={isAnalyzing}
-          >
-            Re-analyze
-          </Button>
-        </div>
-      ) : null}
-
       {showHome && user ? (
         <DashboardHome
           user={user}
@@ -496,7 +437,6 @@ export default function Dashboard({
           canAnalyze={canAnalyze}
           recentRepos={recentRepos}
           onSelectRecent={setRepositoryRef}
-          demoMode={demoMode}
         />
       ) : null}
 

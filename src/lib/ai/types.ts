@@ -1,9 +1,6 @@
 import type { z } from "zod";
 
-export type AiProviderId =
-  | "mock"
-  | "auto"
-  | ByokProviderId;
+export type AiProviderId = "auto" | ByokProviderId;
 
 export type ByokProviderId =
   | "gemini"
@@ -14,7 +11,7 @@ export type ByokProviderId =
   | "groq"
   | "xai";
 
-export type AiExecutionMode = "mock" | "byok" | "chain";
+export type AiExecutionMode = "byok" | "chain";
 
 export type ChainProviderId = "gemini" | "openrouter";
 

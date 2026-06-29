@@ -1,5 +1,4 @@
 import { AiConfigError, type AiProvider, type AiRequestConfig, type ByokProviderId } from "@/lib/ai/types";
-import { createMockProvider } from "@/lib/ai/providers/mock";
 import { createByokLanguageModel } from "@/lib/ai/providers/create-language-model";
 import { generateObject } from "ai";
 
@@ -33,8 +32,6 @@ function createByokProvider(id: ByokProviderId, config: AiRequestConfig): AiProv
 
 export function createAiProvider(config: AiRequestConfig): AiProvider {
   switch (config.provider) {
-    case "mock":
-      return createMockProvider();
     case "auto":
       throw new AiConfigError(
         "Hosted MaintainerOS AI should use generateStructuredObject directly.",

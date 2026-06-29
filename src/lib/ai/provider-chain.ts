@@ -27,10 +27,6 @@ export function resolveModelTargets(
 ): ResolvedModelTarget {
   const taskType = getTaskTypeForOperation(operation);
 
-  if (config.mode === "mock") {
-    return { mode: "mock", models: [] };
-  }
-
   if (config.mode === "byok") {
     const provider = config.provider;
 

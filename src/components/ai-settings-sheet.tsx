@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import {
   BYOK_PROVIDER_OPTIONS,
-  DEV_DEMO_PROVIDER_OPTION,
   HOSTED_PROVIDER_OPTION,
   getDefaultByokProvider,
 } from "@/lib/ai/provider-catalog";
@@ -12,14 +11,12 @@ import {
   aiConfigLabel,
   getDefaultModelForProviderOption,
   getEffectiveAiConfig,
-  isLocalDevAiTestingEnabled,
   loadAiConfig,
   saveAiConfig,
   usesOwnProviderKey,
   type ByokProviderId,
   type StoredAiConfig,
 } from "@/lib/ai/client-settings";
-import type { AiProviderId } from "@/lib/ai/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,13 +46,10 @@ interface AiSettingsSheetProps {
 export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
   const [open, setOpen] = useState(false);
   const [useOwnKey, setUseOwnKey] = useState(false);
-  const [hostedSource, setHostedSource] = useState<AiProviderId>("auto");
   const [byokProvider, setByokProvider] = useState<ByokProviderId>(getDefaultByokProvider());
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
   const [statusLabel, setStatusLabel] = useState("MaintainerOS AI");
-
-  const showDevOptions = isLocalDevAiTestingEnabled();
 
   useEffect(() => {
     const config = getEffectiveAiConfig();
@@ -63,10 +57,8 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
 
     setUseOwnKey(ownKey);
 
-    if (ownKey && config.provider !== "auto" && config.provider !== "mock") {
+    if (ownKey && config.provider !== "auto") {
       setByokProvider(config.provider as ByokProviderId);
-    } else {
-      setHostedSource(config.provider === "mock" ? "mock" : "auto");
     }
 
     setApiKey(config.apiKey ?? "");
@@ -75,21 +67,17 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
   }, [open]);
 
   function handleSave() {
-    let stored: StoredAiConfig;
-
-    if (useOwnKey) {
-      stored = saveAiConfig({
-        provider: byokProvider,
-        apiKey: apiKey.trim() || undefined,
-        model: model.trim() || undefined,
-      });
-    } else {
-      stored = saveAiConfig({
-        provider: hostedSource,
-        model: undefined,
-        apiKey: undefined,
-      });
-    }
+    const stored = useOwnKey
+      ? saveAiConfig({
+          provider: byokProvider,
+          apiKey: apiKey.trim() || undefined,
+          model: model.trim() || undefined,
+        })
+      : saveAiConfig({
+          provider: "auto",
+          model: undefined,
+          apiKey: undefined,
+        });
 
     setStatusLabel(aiConfigLabel(stored));
     onSaved?.(stored);
@@ -99,12 +87,13 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
-          <Sparkles className="size-3.5" />
-          MaintainerOS AI
-          <Badge variant="secondary" className="ml-0.5 hidden max-w-40 truncate sm:inline-flex">
-            {statusLabel}
-          </Badge>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label={`AI settings: ${statusLabel}`}
+        >
+          <Sparkles className="size-4" />
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full sm:max-w-md">
@@ -114,8 +103,8 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
             MaintainerOS AI
           </SheetTitle>
           <SheetDescription>
-            Production uses hosted MaintainerOS AI with free Gemini and OpenRouter models — no
-            setup required. Switch to your own provider only if you want to bring an API key.
+            Hosted MaintainerOS AI uses free Gemini and OpenRouter models with automatic
+            failover — no setup required.
           </SheetDescription>
         </SheetHeader>
 
@@ -129,41 +118,19 @@ export default function AiSettingsSheet({ onSaved }: AiSettingsSheetProps) {
             </div>
           ) : null}
 
-          {showDevOptions && !useOwnKey ? (
-            <div className="space-y-2">
-              <Label htmlFor="ai-dev-source">Local development</Label>
-              <Select
-                value={hostedSource}
-                onValueChange={(value) => setHostedSource(value as AiProviderId)}
-              >
-                <SelectTrigger id="ai-dev-source" className="w-full">
-                  <SelectValue placeholder="Select development mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={HOSTED_PROVIDER_OPTION.id}>
-                    {HOSTED_PROVIDER_OPTION.label}
-                  </SelectItem>
-                  <SelectItem value={DEV_DEMO_PROVIDER_OPTION.id}>
-                    {DEV_DEMO_PROVIDER_OPTION.label}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {hostedSource === "mock"
-                  ? DEV_DEMO_PROVIDER_OPTION.description
-                  : "Use hosted models while developing locally (requires server API keys)."}
-              </p>
-            </div>
-          ) : null}
-
           <div className="flex items-center justify-between gap-4 rounded-lg border border-border/40 p-4">
             <div className="space-y-1">
-              <Label htmlFor="ai-use-own-key" className="text-sm font-medium">
-                Use my own provider
-              </Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Label htmlFor="ai-use-own-key" className="text-sm font-medium">
+                  Use your own provider
+                </Label>
+                <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                  Experimental
+                </Badge>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Optional. Connect OpenAI, Anthropic, Gemini, Groq, or another supported provider
-                with your API key.
+                Connect OpenAI, Anthropic, Gemini, Groq, or another supported provider with
+                your API key.
               </p>
             </div>
             <Switch

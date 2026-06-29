@@ -19,7 +19,6 @@ const requestSchema = z.object({
   currentContent: z.string(),
   aiConfig: aiConfigSchema,
   forceRefresh: z.boolean().optional(),
-  demoMode: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
@@ -38,7 +37,6 @@ export async function POST(request: Request) {
     operation: "issue-fix-plan",
     aiConfig: body.aiConfig,
     forceRefresh: body.forceRefresh,
-    demoMode: body.demoMode,
     cacheInputs: {
       analysisHash: hashAnalysisSnapshot(body.analysis),
       issueNumber: body.issueNumber,

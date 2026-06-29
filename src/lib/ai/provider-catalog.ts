@@ -1,6 +1,6 @@
 import type { AiProviderId, ByokProviderId } from "@/lib/ai/types";
 
-export type AiProviderGroup = "hosted" | "dev" | "byok";
+export type AiProviderGroup = "hosted" | "byok";
 
 export interface AiProviderOption {
   id: AiProviderId;
@@ -29,15 +29,6 @@ export const HOSTED_PROVIDER_OPTION: AiProviderOption = {
     "Hosted MaintainerOS AI powered by free Gemini and OpenRouter models with automatic failover. No API key required.",
   requiresKey: false,
   group: "hosted",
-};
-
-export const DEV_DEMO_PROVIDER_OPTION: AiProviderOption = {
-  id: "mock",
-  label: "Local demo fixtures",
-  description:
-    "Deterministic fixture data for local development and testing. No API calls or keys.",
-  requiresKey: false,
-  group: "dev",
 };
 
 export const BYOK_PROVIDER_OPTIONS: AiProviderOption[] = [
@@ -97,10 +88,8 @@ export const BYOK_PROVIDER_OPTIONS: AiProviderOption[] = [
   },
 ];
 
-/** All valid stored provider ids (includes legacy openrouter BYOK). */
 export const AI_PROVIDER_OPTIONS: AiProviderOption[] = [
   HOSTED_PROVIDER_OPTION,
-  DEV_DEMO_PROVIDER_OPTION,
   ...BYOK_PROVIDER_OPTIONS,
   {
     id: "openrouter",
@@ -112,13 +101,6 @@ export const AI_PROVIDER_OPTIONS: AiProviderOption[] = [
     group: "byok",
   },
 ];
-
-export function isLocalDevAiTestingEnabled(): boolean {
-  return (
-    process.env.NODE_ENV === "development" ||
-    process.env.NEXT_PUBLIC_ENABLE_AI_DEMO === "true"
-  );
-}
 
 export function getAiProviderOption(id: AiProviderId): AiProviderOption | undefined {
   return AI_PROVIDER_OPTIONS.find((option) => option.id === id);
@@ -134,20 +116,12 @@ export function isHostedProvider(id: AiProviderId): boolean {
   return id === "auto";
 }
 
-export function isDevDemoProvider(id: AiProviderId): boolean {
-  return id === "mock";
-}
-
 export function maintainerOsAiLabel(config: {
   provider: AiProviderId;
   model?: string;
 }): string {
   if (config.provider === "auto") {
     return "MaintainerOS AI";
-  }
-
-  if (config.provider === "mock") {
-    return "Local demo";
   }
 
   const option = getAiProviderOption(config.provider);
@@ -162,4 +136,13 @@ export function maintainerOsAiLabel(config: {
 
 export function getDefaultByokProvider(): ByokProviderId {
   return "openai";
+}
+
+export function normalizeStoredProvider(provider: string): AiProviderId {
+  if (provider === "mock") {
+    return "auto";
+  }
+
+  const match = AI_PROVIDER_OPTIONS.find((option) => option.id === provider);
+  return match?.id ?? "auto";
 }

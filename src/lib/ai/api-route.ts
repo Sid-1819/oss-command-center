@@ -50,7 +50,6 @@ export interface HandleAiStreamOptions<T> {
   system: string;
   prompt: string;
   schema: z.ZodType<T>;
-  demoMode?: boolean;
 }
 
 const CACHE_PROVIDER: ProviderAttemptResult = {
@@ -68,10 +67,7 @@ export async function handleAiStreamRoute<T>(
     return authError;
   }
 
-  const aiConfig =
-    options.demoMode || options.aiConfig?.provider === "mock"
-      ? ({ provider: "mock" } satisfies AiRequestConfig)
-      : options.aiConfig;
+  const aiConfig = options.aiConfig;
 
   const resolvedConfig = resolveAiConfig(aiConfig);
   const fingerprint =

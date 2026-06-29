@@ -52,7 +52,6 @@ export interface IssueFixActionInput {
   sourceSha?: string;
   aiConfig?: AiRequestConfig;
   forceRefresh?: boolean;
-  demoMode?: boolean;
 }
 
 export interface IssueFixExecutionPlan extends ExecutionPlan<IssueFixPlanStep> {

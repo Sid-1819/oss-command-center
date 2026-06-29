@@ -88,30 +88,15 @@ export function ExecutionWorkflow({
     setStatus('executing');
 
     try {
-      if (onExecute) {
-        const { result, actionRun: nextActionRun } = await onExecute();
-        setExecutionResult(result);
-        setActionRun(nextActionRun ?? null);
-        setCompletion(null);
-        setStatus(result.status === 'success' ? 'complete' : 'failed');
-        return;
+      if (!onExecute) {
+        throw new Error('Execution handler is required.');
       }
 
-      // Demo-only mock execution
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      setStatus('complete');
-      setExecutionResult({
-        status: 'success',
-        summary: 'Documentation successfully updated',
-        logs: ['Starting documentation update...', 'Updated 3 files', 'Validation passed', 'Execution completed'],
-        changesApplied: 3,
-        checksPassedCount: 4,
-        checksFailedCount: 0,
-        prUrl: 'https://github.com/example/pulls/123',
-        branchName: 'fix/documentation-update',
-        canRollback: true,
-      });
+      const { result, actionRun: nextActionRun } = await onExecute();
+      setExecutionResult(result);
+      setActionRun(nextActionRun ?? null);
+      setCompletion(null);
+      setStatus(result.status === 'success' ? 'complete' : 'failed');
     } catch (error) {
       setStatus('failed');
       setExecutionResult({

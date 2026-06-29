@@ -19,7 +19,6 @@ export async function syncDashboardSessionAfterMerge(input: {
   repositoryRef: string;
   analysis: RepositoryAnalysis;
   briefing: MaintainerBriefing;
-  demoMode?: boolean;
 }): Promise<void> {
   try {
     await saveDashboardSession({
@@ -27,7 +26,6 @@ export async function syncDashboardSessionAfterMerge(input: {
       analysis: input.analysis,
       briefing: input.briefing,
       analyzedAt: new Date().toISOString(),
-      demoMode: input.demoMode,
     });
   } catch {
     // Dashboard restore is best-effort and should not block merge completion.

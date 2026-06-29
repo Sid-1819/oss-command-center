@@ -2,11 +2,6 @@
 
 import { analyzeRepository } from "@/actions/analyzeRepository";
 import { generateMaintainerBriefing } from "@/actions/generateMaintainerBriefing";
-import {
-  DEMO_REPOSITORY_REF,
-  getDemoMaintainerBriefing,
-  getDemoRepositoryAnalysis,
-} from "@/lib/demo/mock-execution";
 import { trimAnalysisForClient } from "@/lib/repository-analysis-utils";
 import { parseRepositoryRef } from "@/lib/parse-repository-ref";
 import type { AiRequestConfig } from "@/lib/ai/types";
@@ -18,7 +13,6 @@ export interface AnalyzeRepositoryDashboardInput {
   repositoryRef: string;
   aiConfig?: AiRequestConfig;
   forceRefresh?: boolean;
-  demoMode?: boolean;
 }
 
 export async function analyzeRepositoryDashboard(
@@ -26,19 +20,6 @@ export async function analyzeRepositoryDashboard(
 ): Promise<DashboardAnalysisResult> {
   const params: AnalyzeRepositoryDashboardInput =
     typeof input === "string" ? { repositoryRef: input } : input;
-
-  if (params.demoMode) {
-    const analysis = getDemoRepositoryAnalysis();
-    const briefing = getDemoMaintainerBriefing();
-
-    return {
-      success: true,
-      analysis: trimAnalysisForClient(analysis, briefing),
-      briefing,
-      analyzedAt: new Date().toISOString(),
-      repositoryRef: DEMO_REPOSITORY_REF,
-    };
-  }
 
   const parsed = parseRepositoryRef(params.repositoryRef);
 

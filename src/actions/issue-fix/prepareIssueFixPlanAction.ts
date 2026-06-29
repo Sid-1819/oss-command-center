@@ -10,14 +10,6 @@ import { normalizeBriefing } from "@/lib/maintainer-briefing-utils";
 import { parseRepositoryRef } from "@/lib/parse-repository-ref";
 import type { PlanIssueFixActionInput } from "@/types/doc-plan-review";
 
-const DEMO_FILE_SHA = "demo-file-sha";
-const DEMO_ISSUE_FIX_CONTENT = `# Contributing
-
-## Development setup
-
-Run \`npm instal example-project\` to install dependencies locally.
-`;
-
 export type PrepareIssueFixPlanResult =
   | {
       success: true;
@@ -33,7 +25,6 @@ export type PrepareIssueFixPlanResult =
       currentContent: string;
       sourceSha: string;
       aiConfig?: PlanIssueFixActionInput["aiConfig"];
-      demoMode?: boolean;
     }
   | {
       success: false;
@@ -85,80 +76,61 @@ export async function prepareIssueFixPlanAction(
     };
   }
 
-  let issueTitle: string;
-  let issueBody: string | undefined;
-  let fileContent: string;
-  let fileSha: string;
+  try {
+    const session = await requireSession();
+    const octokit = createOctokit(session.accessToken);
 
-  if (input.demoMode) {
-    issueTitle = "Typo in CONTRIBUTING.md code sample";
-    issueBody = "The npm install command in CONTRIBUTING.md has a typo.";
-    fileContent = DEMO_ISSUE_FIX_CONTENT;
-    fileSha = DEMO_FILE_SHA;
-  } else {
-    try {
-      const session = await requireSession();
-      const octokit = createOctokit(session.accessToken);
+    const issueDetails = await getIssue(octokit, {
+      owner: parsed.owner,
+      repo: parsed.repo,
+      issueNumber: input.issueNumber,
+    });
 
-      const issueDetails = await getIssue(octokit, {
-        owner: parsed.owner,
-        repo: parsed.repo,
-        issueNumber: input.issueNumber,
-      });
+    const file = await getFileContents({
+      accessToken: session.accessToken,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      path: targetFile,
+      ref: input.analysis.repository.defaultBranch,
+    });
 
-      issueTitle = issueDetails.title;
-      issueBody = issueDetails.body ?? undefined;
-
-      const file = await getFileContents({
-        accessToken: session.accessToken,
-        owner: parsed.owner,
-        repo: parsed.repo,
-        path: targetFile,
-        ref: input.analysis.repository.defaultBranch,
-      });
-
-      fileContent = file.content;
-      fileSha = file.sha;
-    } catch (error) {
-      if (error instanceof AuthError) {
-        return {
-          success: false,
-          error: { code: "EXPIRED_SESSION", message: error.message, status: 401 },
-        };
-      }
-
-      if (error instanceof GitHubServiceError) {
-        return {
-          success: false,
-          error: { code: "GITHUB_FETCH", message: error.message, status: error.status },
-        };
-      }
-
+    return {
+      success: true,
+      repositoryRef: parsed.repositoryRef,
+      issueNumber: input.issueNumber,
+      issueTitle: issueDetails.title,
+      issueBody: issueDetails.body ?? undefined,
+      candidate,
+      targetFile,
+      analysis: input.analysis,
+      currentContent: file.content,
+      sourceSha: file.sha,
+      aiConfig: input.aiConfig,
+    };
+  } catch (error) {
+    if (error instanceof AuthError) {
       return {
         success: false,
-        error: {
-          code: "GITHUB_FETCH",
-          message: error instanceof Error ? error.message : "Failed to fetch issue or file.",
-          status: 500,
-        },
+        error: { code: "EXPIRED_SESSION", message: error.message, status: 401 },
       };
     }
-  }
 
-  return {
-    success: true,
-    repositoryRef: parsed.repositoryRef,
-    issueNumber: input.issueNumber,
-    issueTitle,
-    issueBody,
-    candidate,
-    targetFile,
-    analysis: input.analysis,
-    currentContent: fileContent,
-    sourceSha: fileSha,
-    aiConfig: input.aiConfig ?? (input.demoMode ? { provider: "mock" } : undefined),
-    demoMode: input.demoMode,
-  };
+    if (error instanceof GitHubServiceError) {
+      return {
+        success: false,
+        error: { code: "GITHUB_FETCH", message: error.message, status: error.status },
+      };
+    }
+
+    return {
+      success: false,
+      error: {
+        code: "GITHUB_FETCH",
+        message: error instanceof Error ? error.message : "Failed to fetch issue or file.",
+        status: 500,
+      },
+    };
+  }
 }
 
 export { IssueFixActionError };

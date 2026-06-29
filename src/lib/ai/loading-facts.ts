@@ -13,7 +13,6 @@ const AI_LOADING_FACTS = [
   'AI-generated plans let you approve changes before anything hits your default branch.',
   'Security advisories and dependency bumps benefit from consistent, repeatable workflows.',
   'Good commit messages in past PRs teach AI how your project prefers to describe changes.',
-  'Demo mode lets you walk through the full flow without spending API quota.',
   'Structured output from models makes plans and diffs predictable for review UIs.',
   'Contributor-friendly repos keep installation steps accurate — AI can help refresh them.',
   'Release notes drafted from merged PRs reduce last-minute release friction.',

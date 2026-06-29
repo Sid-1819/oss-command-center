@@ -1,6 +1,14 @@
 import { signOutUser } from "@/actions/auth";
 import type { ClientSessionUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface UserMenuProps {
   user: ClientSessionUser;
@@ -17,35 +25,44 @@ function getInitials(name: string | null | undefined, username: string): string 
 
 export default function UserMenu({ user }: UserMenuProps) {
   return (
-    <div className="hidden items-center gap-2 sm:flex">
-      {user.image ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={user.image}
-          alt={user.name ?? user.username}
-          className="size-7 rounded-full border border-white/[0.08] object-cover"
-        />
-      ) : (
-        <div className="flex size-7 items-center justify-center rounded-full border border-white/[0.08] bg-secondary text-[10px] font-medium">
-          {getInitials(user.name, user.username)}
-        </div>
-      )}
-      <div className="min-w-0 text-right">
-        {user.name ? (
-          <p className="truncate text-xs font-medium text-foreground">{user.name}</p>
-        ) : null}
-        <p className="truncate text-[11px] text-muted-foreground">@{user.username}</p>
-      </div>
-      <form action={signOutUser}>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
         <Button
-          type="submit"
-          size="sm"
           variant="ghost"
-          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+          size="icon"
+          className="size-8 rounded-full p-0 hover:bg-white/5"
+          aria-label="Account menu"
         >
-          Log out
+          {user.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.image}
+              alt={user.name ?? user.username}
+              className="size-8 rounded-full border border-white/[0.08] object-cover"
+            />
+          ) : (
+            <div className="flex size-8 items-center justify-center rounded-full border border-white/[0.08] bg-secondary text-[10px] font-medium">
+              {getInitials(user.name, user.username)}
+            </div>
+          )}
         </Button>
-      </form>
-    </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuLabel className="font-normal">
+          <p className="truncate text-sm font-medium text-foreground">
+            {user.name ?? user.username}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <form action={signOutUser} className="w-full">
+            <button type="submit" className="w-full cursor-pointer text-left">
+              Log out
+            </button>
+          </form>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -27,10 +27,6 @@ import {
   saveActionRun,
 } from '@/lib/action-run/storage';
 import {
-  buildDemoCompletedActionRun,
-  buildDemoRefreshCompletion,
-} from '@/lib/demo/refresh-completion';
-import {
   buildDocPlanReview,
   clearPlanReview,
   loadPlanReview,
@@ -98,7 +94,6 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
   const repo = searchParams.get('repo')?.trim() ?? '';
   const targetFile = searchParams.get('file')?.trim() || defaultFile;
   const suggestion = searchParams.get('suggestion')?.trim() ?? '';
-  const demoMode = searchParams.get('demo') === '1';
 
   const [action, setAction] = useState<MaintenanceAction | null>(null);
   const [plan, setPlan] = useState<MarkdownDocExecutionPlan | null>(null);
@@ -188,8 +183,8 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
       return false;
     }
     const config = docContext.aiConfig ?? getEffectiveAiConfig();
-    return demoMode || docContext.demoMode || isAiConfigReady(config);
-  }, [demoMode, docContext, repo, targetFile]);
+    return isAiConfigReady(config);
+  }, [docContext, repo, targetFile]);
 
   useEffect(() => {
     if (!isPlanning) return;
@@ -336,7 +331,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
     }
 
     const aiConfig = context.aiConfig ?? getEffectiveAiConfig();
-    if (!demoMode && !context.demoMode && !isAiConfigReady(aiConfig)) {
+    if (!isAiConfigReady(aiConfig)) {
       setErrorMessage('Configure an AI provider in settings before starting analysis.');
       return;
     }
@@ -356,7 +351,6 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
         analysis: context.analysis,
         briefing: context.briefing,
         aiConfig,
-        demoMode: context.demoMode ?? demoMode,
       });
 
       if (!prepared.success) {
@@ -374,13 +368,12 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
         suggestion: prepared.suggestion,
         currentContent: prepared.currentContent,
         aiConfig: prepared.aiConfig,
-        demoMode: prepared.demoMode,
       });
     } catch (error) {
       setErrorMessage(workflowErrorMessage(error, 'Failed to start plan generation.'));
       setIsPlanning(false);
     }
-  }, [demoMode, docContext, repo, submitPlan, suggestion, targetFile]);
+  }, [docContext, repo, submitPlan, suggestion, targetFile]);
 
   const handleReAnalyze = useCallback(() => {
     void (async () => {
@@ -404,12 +397,9 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
 
     setErrorMessage(null);
 
-    const storedContext = await loadDocPlanContext();
-
     const result = await executeMarkdownDocAction({
       repositoryRef: planReview.repositoryRef,
       plan: planReview.plan,
-      demoMode: demoMode || storedContext?.demoMode,
     });
 
     if (!result.success) {
@@ -436,7 +426,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
     }
 
     return { result: executionResult, actionRun: result.actionRun };
-  }, [action, demoMode, planReview, targetFile]);
+  }, [action, planReview, targetFile]);
 
   const handleRefreshStatus = useCallback(
     async (actionRun: ActionRun) => {
@@ -451,7 +441,6 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
           repositoryRef: actionRun.repositoryRef,
           analysis: completion.analysis,
           briefing: completion.briefing,
-          demoMode,
         });
 
         const docSuggestion = completion.nextActions.find(
@@ -478,22 +467,6 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
         }
       };
 
-      if (demoMode && context) {
-        const completion = buildDemoRefreshCompletion({
-          analysis: context.analysis,
-          briefing: context.briefing,
-        });
-        const completedRun = buildDemoCompletedActionRun(actionRun);
-
-        await saveActionRun(completedRun, completion);
-        await syncMergedAnalysis(completion);
-        setRestoredActionRun(completedRun);
-        setRestoredCompletion(completion);
-        setRestoredExecutionResult(buildRestoredExecutionResult(completedRun));
-
-        return { actionRun: completedRun, completion };
-      }
-
       const refreshed = await refreshActionRunStatus(actionRun);
       if (!refreshed.success) throw new Error(refreshed.error.message);
 
@@ -512,7 +485,7 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
         completion: refreshed.completion,
       };
     },
-    [demoMode, planReview?.suggestion, suggestion, targetFile],
+    [planReview?.suggestion, suggestion, targetFile],
   );
 
   const handleExecuteDocSuggestion = useCallback(
@@ -536,19 +509,19 @@ export default function DocWorkflowPage({ defaultFile = 'README.md' }: DocWorkfl
           await saveDocPlanContext(nextContext);
 
           router.push(
-            `/app/doc?repo=${encodeURIComponent(repo)}&file=${encodeURIComponent(nextFile)}&suggestion=${encodeURIComponent(nextSuggestion)}${demoMode ? '&demo=1' : ''}`,
+            `/app/doc?repo=${encodeURIComponent(repo)}&file=${encodeURIComponent(nextFile)}&suggestion=${encodeURIComponent(nextSuggestion)}`,
           );
         } catch (error) {
           setErrorMessage(workflowErrorMessage(error, 'Failed to start next doc update.'));
         }
       })();
     },
-    [demoMode, repo, router],
+    [repo, router],
   );
 
   const showLanding =
     !isInitializing && !isPlanning && !planReview && docContext && !errorMessage;
-  const backToDashboardHref = getDashboardHref(repo, { demoMode });
+  const backToDashboardHref = getDashboardHref(repo);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

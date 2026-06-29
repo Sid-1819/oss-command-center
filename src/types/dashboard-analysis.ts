@@ -27,9 +27,7 @@ export type DashboardAnalysisSuccess = {
   repositoryRef: string;
 };
 
-export interface DashboardSession extends DashboardAnalysisSuccess {
-  demoMode?: boolean;
-}
+export interface DashboardSession extends DashboardAnalysisSuccess {}
 
 export type DashboardAnalysisResult =
   | ({
@@ -46,13 +44,13 @@ const FRIENDLY_ERROR_MESSAGES: Record<DashboardErrorCode, string> = {
   FORBIDDEN: "GitHub access denied. Sign in again or pick a repository you can access.",
   RATE_LIMIT: "Rate limit exceeded. Try again shortly.",
   UNAUTHORIZED: "Sign in with GitHub to analyze repositories.",
-  MISSING_API_KEY: "Connect a compatible provider in MaintainerOS AI settings, or use MaintainerOS AI · Demo.",
+  MISSING_API_KEY: "Connect a compatible provider in MaintainerOS AI settings, or use hosted MaintainerOS AI.",
   INVALID_RESPONSE: "AI briefing failed. Try again.",
   AI_ERROR: "AI briefing failed. Try again.",
   PROVIDER_NOT_IMPLEMENTED:
-    "That MaintainerOS AI provider is not available yet. Use MaintainerOS AI, Demo mode, or another compatible provider.",
+    "That MaintainerOS AI provider is not available yet. Use hosted MaintainerOS AI or another compatible provider.",
   PROVIDERS_EXHAUSTED:
-    "All MaintainerOS AI providers are unavailable. Try again later or switch to Demo mode.",
+    "All MaintainerOS AI providers are unavailable. Try again later or connect your own provider.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
 

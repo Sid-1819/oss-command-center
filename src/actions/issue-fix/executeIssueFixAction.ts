@@ -6,10 +6,6 @@ import { issueFixReporter } from "@/actions/issue-fix/reporter";
 import { IssueFixActionError } from "@/actions/issue-fix/types";
 import { issueFixValidator } from "@/actions/issue-fix/validator";
 import { buildIssueFixActionRun } from "@/lib/action-run/build-action-run";
-import {
-  buildDemoActionRun,
-  buildDemoIssueFixOutput,
-} from "@/lib/demo/mock-execution";
 import { AuthError, requireSession } from "@/lib/auth";
 import { createOctokit, getRepository } from "@/lib/github";
 import {
@@ -45,30 +41,6 @@ export async function executeIssueFixAction(
         message: firstIssue?.message ?? "Plan failed validation.",
         status: 400,
       },
-    };
-  }
-
-  if (input.demoMode) {
-    const { output, report } = buildDemoIssueFixOutput(
-      parsed.repositoryRef,
-      input.plan.issueNumber,
-      input.plan.targetFile,
-    );
-    const actionRun = buildDemoActionRun({
-      repositoryRef: parsed.repositoryRef,
-      actionType: "issue-fix",
-      planId: input.plan.planId,
-      targetFile: input.plan.targetFile,
-      issueNumber: input.plan.issueNumber,
-      pullRequestNumber: output.prNumber ?? 102,
-      branch: output.branchName ?? "maintaineros/demo-issue",
-    });
-
-    return {
-      success: true,
-      output,
-      report,
-      actionRun,
     };
   }
 

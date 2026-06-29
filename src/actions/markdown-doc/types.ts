@@ -66,7 +66,6 @@ export interface MarkdownDocActionInput {
   sourceSha?: string;
   aiConfig?: AiRequestConfig;
   forceRefresh?: boolean;
-  demoMode?: boolean;
 }
 
 export interface MarkdownDocExecutionPlan
@@ -150,32 +149,3 @@ export class ReadmeActionError extends MarkdownDocActionError {
 }
 export const readmeExecutionPlanSchema = markdownDocExecutionPlanSchema;
 export const readmePlanStepSchema = markdownDocPlanStepSchema;
-
-export const DEFAULT_README_FIXTURE = `# Example Project
-
-A sample open-source project for MaintainerOS development.
-
-## Installation
-
-\`\`\`bash
-npm install example-project
-\`\`\`
-
-## Usage
-
-Import the package and call \`run()\`:
-
-\`\`\`javascript
-import { run } from "example-project";
-
-run();
-\`\`\`
-
-## Contributing
-
-Pull requests are welcome. Please open an issue first to discuss major changes.
-
-## License
-
-MIT
-`;

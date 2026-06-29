@@ -1,8 +1,5 @@
 import { generateObject, streamObject } from "ai";
 import type { z } from "zod";
-import maintainerBriefingFixture from "@/lib/ai/fixtures/maintainer-briefing.json";
-import markdownDocPlanFixture from "@/lib/ai/fixtures/markdown-doc-plan.json";
-import issueFixPlanFixture from "@/lib/ai/fixtures/issue-fix-plan.json";
 import {
   isFailoverError,
   logProviderAttempt,
@@ -24,12 +21,6 @@ import {
   type ByokProviderId,
   type ProviderAttemptResult,
 } from "@/lib/ai/types";
-
-const MOCK_FIXTURES: Record<AiOperation, unknown> = {
-  "maintainer-briefing": maintainerBriefingFixture,
-  "markdown-doc-plan": markdownDocPlanFixture,
-  "issue-fix-plan": issueFixPlanFixture,
-};
 
 const INVALID_JSON_CORRECTION =
   "Your previous response was invalid JSON. Return only valid JSON matching the schema.";
@@ -72,21 +63,6 @@ async function generateWithChain<T>(
   const resolved = resolveAiConfig(input.aiConfig);
   const targets = resolveModelTargets(resolved, input.operation);
   const prompt = correction ? `${input.prompt}\n\n${correction}` : input.prompt;
-
-  if (targets.mode === "mock") {
-    const fixture = MOCK_FIXTURES[input.operation];
-    const parsed = input.schema.parse(fixture);
-
-    return {
-      object: parsed,
-      provider: {
-        provider: "gemini",
-        model: "mock",
-        usedFallback: false,
-        attempt: 1,
-      },
-    };
-  }
 
   let lastError: unknown;
 
@@ -180,32 +156,6 @@ export async function streamStructuredObject<T>(
 }> {
   const resolved = resolveAiConfig(input.aiConfig);
   const targets = resolveModelTargets(resolved, input.operation);
-
-  if (targets.mode === "mock") {
-    const fixture = MOCK_FIXTURES[input.operation];
-    const parsed = input.schema.parse(fixture);
-    const body = JSON.stringify(parsed);
-
-    return {
-      result: {
-        object: Promise.resolve(parsed),
-        toTextStreamResponse: () =>
-          new Response(body, {
-            headers: {
-              "Content-Type": "text/plain; charset=utf-8",
-              "X-AI-Provider": "mock",
-              "X-AI-Model": "mock",
-            },
-          }),
-      },
-      provider: {
-        provider: "gemini",
-        model: "mock",
-        usedFallback: false,
-        attempt: 1,
-      },
-    };
-  }
 
   let lastError: unknown;
 

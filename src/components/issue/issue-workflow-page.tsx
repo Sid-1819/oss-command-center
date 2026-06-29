@@ -38,10 +38,6 @@ import { toIssueMaintenanceAction } from '@/lib/actions/to-maintenance-action';
 import { getEffectiveAiConfig, isAiConfigReady } from '@/lib/ai/client-settings';
 import { normalizeBriefing } from '@/lib/maintainer-briefing-utils';
 import {
-  buildDemoCompletedActionRun,
-  buildDemoRefreshCompletion,
-} from '@/lib/demo/refresh-completion';
-import {
   isWorkflowStateError,
   workflowStateErrorMessage,
 } from '@/lib/workflow-state/errors';
@@ -90,7 +86,6 @@ export default function IssueWorkflowPage() {
   const searchParams = useSearchParams();
   const repo = searchParams.get('repo')?.trim() ?? '';
   const issueNumber = Number.parseInt(searchParams.get('issue')?.trim() ?? '', 10);
-  const demoMode = searchParams.get('demo') === '1';
 
   const [action, setAction] = useState<MaintenanceAction | null>(null);
   const [planReview, setPlanReview] = useState<IssueFixPlanReview | null>(null);
@@ -181,8 +176,8 @@ export default function IssueWorkflowPage() {
   const canStartAnalysis = useMemo(() => {
     if (!issueContext || issueContext.repositoryRef !== repo) return false;
     const config = issueContext.aiConfig ?? getEffectiveAiConfig();
-    return demoMode || issueContext.demoMode || isAiConfigReady(config);
-  }, [demoMode, issueContext, repo]);
+    return isAiConfigReady(config);
+  }, [issueContext, repo]);
 
   useEffect(() => {
     if (!isPlanning) return;
@@ -309,7 +304,7 @@ export default function IssueWorkflowPage() {
     }
 
     const aiConfig = context.aiConfig ?? getEffectiveAiConfig();
-    if (!demoMode && !context.demoMode && !isAiConfigReady(aiConfig)) {
+    if (!isAiConfigReady(aiConfig)) {
       setErrorMessage('Configure an AI provider in settings before starting analysis.');
       return;
     }
@@ -327,7 +322,6 @@ export default function IssueWorkflowPage() {
         analysis: context.analysis,
         briefing: context.briefing,
         aiConfig,
-        demoMode: context.demoMode ?? demoMode,
       });
 
       if (!prepared.success) {
@@ -347,13 +341,12 @@ export default function IssueWorkflowPage() {
         analysis: prepared.analysis,
         currentContent: prepared.currentContent,
         aiConfig: prepared.aiConfig,
-        demoMode: prepared.demoMode,
       });
     } catch (error) {
       setErrorMessage(workflowErrorMessage(error, 'Failed to start plan generation.'));
       setIsPlanning(false);
     }
-  }, [demoMode, issueContext, issueNumber, repo, submitPlan]);
+  }, [issueContext, issueNumber, repo, submitPlan]);
 
   useEffect(() => {
     if (searchParams.get('analyze') !== '1') return;
@@ -400,12 +393,9 @@ export default function IssueWorkflowPage() {
   const handleCreatePullRequest = useCallback(async (): Promise<ExecuteWorkflowResult> => {
     if (!planReview || !action) throw new Error('Plan not ready');
 
-    const storedContext = await loadIssuePlanContext();
-
     const result = await executeIssueFixAction({
       repositoryRef: planReview.repositoryRef,
       plan: planReview.plan,
-      demoMode: demoMode || storedContext?.demoMode,
     });
 
     if (!result.success) throw new Error(result.error.message);
@@ -424,7 +414,7 @@ export default function IssueWorkflowPage() {
     }
 
     return { result: executionResult, actionRun: result.actionRun };
-  }, [action, demoMode, planReview]);
+  }, [action, planReview]);
 
   const handleRefreshStatus = useCallback(async (actionRun: ActionRun) => {
     const context = await loadIssuePlanContext();
@@ -438,7 +428,6 @@ export default function IssueWorkflowPage() {
         repositoryRef: actionRun.repositoryRef,
         analysis: completion.analysis,
         briefing: completion.briefing,
-        demoMode,
       });
 
       const storedContext = context ?? (await loadIssuePlanContext());
@@ -458,22 +447,6 @@ export default function IssueWorkflowPage() {
       }
     };
 
-    if (demoMode && context) {
-      const completion = buildDemoRefreshCompletion({
-        analysis: context.analysis,
-        briefing: context.briefing,
-      });
-      const completedRun = buildDemoCompletedActionRun(actionRun);
-
-      await saveActionRun(completedRun, completion);
-      await syncMergedAnalysis(completion);
-      setRestoredActionRun(completedRun);
-      setRestoredCompletion(completion);
-      setRestoredExecutionResult(buildRestoredExecutionResult(completedRun));
-
-      return { actionRun: completedRun, completion };
-    }
-
     const refreshed = await refreshActionRunStatus(actionRun);
     if (!refreshed.success) throw new Error(refreshed.error.message);
     await saveActionRun(refreshed.actionRun, refreshed.completion);
@@ -484,7 +457,7 @@ export default function IssueWorkflowPage() {
     setRestoredCompletion(refreshed.completion ?? null);
     setRestoredExecutionResult(buildRestoredExecutionResult(refreshed.actionRun));
     return { actionRun: refreshed.actionRun, completion: refreshed.completion };
-  }, [demoMode]);
+  }, []);
 
   const handleFixIssue = useCallback(
     (num: number) => {
@@ -510,19 +483,19 @@ export default function IssueWorkflowPage() {
           setErrorMessage(null);
 
           router.push(
-            `/app/issue?repo=${encodeURIComponent(repo)}&issue=${encodeURIComponent(String(num))}${demoMode ? '&demo=1' : ''}&analyze=1`,
+            `/app/issue?repo=${encodeURIComponent(repo)}&issue=${encodeURIComponent(String(num))}&analyze=1`,
           );
         } catch (error) {
           setErrorMessage(workflowErrorMessage(error, 'Failed to start next issue fix.'));
         }
       })();
     },
-    [demoMode, issueContext, repo, router],
+    [issueContext, repo, router],
   );
 
   const showLanding =
     !isInitializing && !isPlanning && !planReview && issueContext && !errorMessage;
-  const backToDashboardHref = getDashboardHref(repo, { demoMode });
+  const backToDashboardHref = getDashboardHref(repo);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

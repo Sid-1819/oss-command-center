@@ -25,7 +25,6 @@ interface DashboardHomeProps {
   canAnalyze: boolean;
   recentRepos: RecentRepo[];
   onSelectRecent: (repositoryRef: string) => void;
-  demoMode?: boolean;
 }
 
 function getGreetingName(user: ClientSessionUser): string {
@@ -47,7 +46,6 @@ export default function DashboardHome({
   canAnalyze,
   recentRepos,
   onSelectRecent,
-  demoMode = false,
 }: DashboardHomeProps) {
   const trimmedRef = repositoryRef.trim();
   const isReady = trimmedRef.length > 0;
@@ -67,7 +65,7 @@ export default function DashboardHome({
         <RepositoryPicker
           value={repositoryRef}
           onSelect={onRepositoryRefChange}
-          disabled={isAnalyzing || demoMode}
+          disabled={isAnalyzing}
         />
 
         {isReady ? (
@@ -91,7 +89,7 @@ export default function DashboardHome({
           ) : (
             <>
               <Sparkles className="size-4" data-icon="inline-start" />
-              {demoMode ? "Load demo" : "Analyze Repository"}
+              Analyze Repository
             </>
           )}
         </Button>

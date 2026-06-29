@@ -27,7 +27,6 @@ export interface DocPlanContext {
   briefing: MaintainerBriefing;
   analyzedAt: string;
   aiConfig?: AiRequestConfig;
-  demoMode?: boolean;
 }
 
 /** @deprecated Use DocPlanContext */
@@ -41,7 +40,6 @@ export interface PlanMarkdownDocActionInput {
   briefing: MaintainerBriefing;
   aiConfig?: AiRequestConfig;
   forceRefresh?: boolean;
-  demoMode?: boolean;
 }
 
 /** @deprecated Use PlanMarkdownDocActionInput */
@@ -86,7 +84,6 @@ export type PlanReadmeActionResult = PlanMarkdownDocActionResult;
 export interface ExecuteMarkdownDocActionInput {
   repositoryRef: string;
   plan: MarkdownDocExecutionPlan;
-  demoMode?: boolean;
 }
 
 /** @deprecated Use ExecuteMarkdownDocActionInput */
@@ -118,7 +115,6 @@ export interface PlanIssueFixActionInput {
   briefing: MaintainerBriefing;
   aiConfig?: AiRequestConfig;
   forceRefresh?: boolean;
-  demoMode?: boolean;
 }
 
 export type PlanIssueFixActionResult =
@@ -141,7 +137,6 @@ export type PlanIssueFixActionResult =
 export interface ExecuteIssueFixActionInput {
   repositoryRef: string;
   plan: import("@/actions/issue-fix/types").IssueFixExecutionPlan;
-  demoMode?: boolean;
 }
 
 export type ExecuteIssueFixActionResult =
@@ -180,5 +175,4 @@ export interface IssuePlanContext {
   briefing: MaintainerBriefing;
   analyzedAt: string;
   aiConfig?: AiRequestConfig;
-  demoMode?: boolean;
 }

@@ -33,7 +33,7 @@ export function buildCacheFingerprint(
     "mode" in aiConfig ? toAiRequestConfig(aiConfig) : aiConfig;
 
   const payload =
-    normalized.provider === "auto" || normalized.provider === "mock"
+    normalized.provider === "auto"
       ? stableStringify({
           operation,
           inputs,
@@ -94,7 +94,7 @@ export async function setCachedResponse(
   const normalized =
     "mode" in aiConfig ? toAiRequestConfig(aiConfig) : aiConfig;
 
-  if (!isCacheEnabled() || normalized.provider === "mock") {
+  if (!isCacheEnabled()) {
     return;
   }
 

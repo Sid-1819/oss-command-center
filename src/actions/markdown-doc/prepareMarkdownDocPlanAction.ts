@@ -1,16 +1,11 @@
 "use server";
 
-import {
-  DEFAULT_README_FIXTURE,
-  isAllowedDocFile,
-} from "@/actions/markdown-doc/types";
+import { isAllowedDocFile } from "@/actions/markdown-doc/types";
 import { AuthError, requireSession } from "@/lib/auth";
 import { getFileContents } from "@/lib/github/contents";
 import { GitHubServiceError } from "@/lib/github/errors";
 import { parseRepositoryRef } from "@/lib/parse-repository-ref";
 import type { PlanMarkdownDocActionInput } from "@/types/doc-plan-review";
-
-const DEMO_FILE_SHA = "demo-file-sha";
 
 export type PrepareMarkdownDocPlanResult =
   | {
@@ -23,7 +18,6 @@ export type PrepareMarkdownDocPlanResult =
       currentContent: string;
       sourceSha: string;
       aiConfig?: PlanMarkdownDocActionInput["aiConfig"];
-      demoMode?: boolean;
     }
   | {
       success: false;
@@ -68,64 +62,49 @@ export async function prepareMarkdownDocPlanAction(
     };
   }
 
-  let fileContent: string;
-  let fileSha: string;
+  try {
+    const session = await requireSession();
+    const file = await getFileContents({
+      accessToken: session.accessToken,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      path: input.targetFile,
+      ref: input.analysis.repository.defaultBranch,
+    });
 
-  if (input.demoMode) {
-    fileContent =
-      input.targetFile.toLowerCase() === "readme.md"
-        ? DEFAULT_README_FIXTURE
-        : `# ${input.targetFile}\n\nDemo fixture content.\n`;
-    fileSha = DEMO_FILE_SHA;
-  } else {
-    try {
-      const session = await requireSession();
-      const file = await getFileContents({
-        accessToken: session.accessToken,
-        owner: parsed.owner,
-        repo: parsed.repo,
-        path: input.targetFile,
-        ref: input.analysis.repository.defaultBranch,
-      });
-
-      fileContent = file.content;
-      fileSha = file.sha;
-    } catch (error) {
-      if (error instanceof AuthError) {
-        return {
-          success: false,
-          error: { code: "EXPIRED_SESSION", message: error.message, status: 401 },
-        };
-      }
-
-      if (error instanceof GitHubServiceError) {
-        return {
-          success: false,
-          error: { code: "GITHUB_FETCH", message: error.message, status: error.status },
-        };
-      }
-
+    return {
+      success: true,
+      repositoryRef: parsed.repositoryRef,
+      targetFile: input.targetFile,
+      suggestion: input.suggestion.trim(),
+      analysis: input.analysis,
+      briefing: input.briefing,
+      currentContent: file.content,
+      sourceSha: file.sha,
+      aiConfig: input.aiConfig,
+    };
+  } catch (error) {
+    if (error instanceof AuthError) {
       return {
         success: false,
-        error: {
-          code: "GITHUB_FETCH",
-          message: `Failed to fetch ${input.targetFile}`,
-          status: 500,
-        },
+        error: { code: "EXPIRED_SESSION", message: error.message, status: 401 },
       };
     }
-  }
 
-  return {
-    success: true,
-    repositoryRef: parsed.repositoryRef,
-    targetFile: input.targetFile,
-    suggestion: input.suggestion.trim(),
-    analysis: input.analysis,
-    briefing: input.briefing,
-    currentContent: fileContent,
-    sourceSha: fileSha,
-    aiConfig: input.aiConfig ?? (input.demoMode ? { provider: "mock" } : undefined),
-    demoMode: input.demoMode,
-  };
+    if (error instanceof GitHubServiceError) {
+      return {
+        success: false,
+        error: { code: "GITHUB_FETCH", message: error.message, status: error.status },
+      };
+    }
+
+    return {
+      success: false,
+      error: {
+        code: "GITHUB_FETCH",
+        message: `Failed to fetch ${input.targetFile}`,
+        status: 500,
+      },
+    };
+  }
 }

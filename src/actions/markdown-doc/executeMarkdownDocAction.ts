@@ -6,10 +6,6 @@ import { markdownDocReporter } from "@/actions/markdown-doc/reporter";
 import { MarkdownDocActionError } from "@/actions/markdown-doc/types";
 import { markdownDocValidator } from "@/actions/markdown-doc/validator";
 import { buildMarkdownDocActionRun } from "@/lib/action-run/build-action-run";
-import {
-  buildDemoActionRun,
-  buildDemoMarkdownDocOutput,
-} from "@/lib/demo/mock-execution";
 import { AuthError, requireSession } from "@/lib/auth";
 import { createOctokit, getRepository } from "@/lib/github";
 import {
@@ -49,28 +45,6 @@ export async function executeMarkdownDocAction(
         message: firstIssue?.message ?? "Plan failed validation.",
         status: 400,
       },
-    };
-  }
-
-  if (input.demoMode) {
-    const { output, report } = buildDemoMarkdownDocOutput(
-      parsed.repositoryRef,
-      input.plan.targetFile,
-    );
-    const actionRun = buildDemoActionRun({
-      repositoryRef: parsed.repositoryRef,
-      actionType: "markdown-doc",
-      planId: input.plan.planId,
-      targetFile: input.plan.targetFile,
-      pullRequestNumber: output.prNumber ?? 101,
-      branch: output.branchName ?? "maintaineros/demo-doc",
-    });
-
-    return {
-      success: true,
-      output,
-      report,
-      actionRun,
     };
   }
 

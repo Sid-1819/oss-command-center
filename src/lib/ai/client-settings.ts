@@ -5,10 +5,9 @@ import {
   getAiProviderOption,
   getDefaultByokProvider,
   isByokProvider,
-  isDevDemoProvider,
   isHostedProvider,
-  isLocalDevAiTestingEnabled,
   maintainerOsAiLabel,
+  normalizeStoredProvider,
 } from "@/lib/ai/provider-catalog";
 import type { AiProviderId, AiRequestConfig, ByokProviderId } from "@/lib/ai/types";
 
@@ -16,26 +15,6 @@ export const AI_CONFIG_STORAGE_KEY = "maintaineros:ai-config";
 
 export interface StoredAiConfig extends AiRequestConfig {
   updatedAt: string;
-}
-
-const VALID_PROVIDERS = new Set<AiProviderId>(
-  AI_PROVIDER_OPTIONS.map((option) => option.id),
-);
-
-function normalizeProvider(provider: string): AiProviderId {
-  if (VALID_PROVIDERS.has(provider as AiProviderId)) {
-    return provider as AiProviderId;
-  }
-
-  return "auto";
-}
-
-function defaultHostedProvider(): AiProviderId {
-  if (isLocalDevAiTestingEnabled() && !isServerAiConfigured()) {
-    return "mock";
-  }
-
-  return "auto";
 }
 
 export function isServerAiConfigured(): boolean {
@@ -57,7 +36,7 @@ export function loadAiConfig(): StoredAiConfig | null {
     const parsed = JSON.parse(raw) as StoredAiConfig;
     return {
       ...parsed,
-      provider: normalizeProvider(parsed.provider),
+      provider: normalizeStoredProvider(parsed.provider),
     };
   } catch {
     return null;
@@ -96,11 +75,11 @@ export function getEffectiveAiConfig(): AiRequestConfig {
     };
   }
 
-  return { provider: defaultHostedProvider() };
+  return { provider: "auto" };
 }
 
 export function isAiConfigReady(config: AiRequestConfig = getEffectiveAiConfig()): boolean {
-  if (isHostedProvider(config.provider) || isDevDemoProvider(config.provider)) {
+  if (isHostedProvider(config.provider)) {
     return true;
   }
 
@@ -127,5 +106,5 @@ export function usesOwnProviderKey(config: AiRequestConfig): boolean {
   return isByokProvider(config.provider);
 }
 
-export { isLocalDevAiTestingEnabled, getDefaultByokProvider };
+export { getDefaultByokProvider };
 export type { ByokProviderId };
